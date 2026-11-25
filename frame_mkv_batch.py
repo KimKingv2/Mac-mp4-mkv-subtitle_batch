@@ -19,7 +19,7 @@ from pathlib import Path
 from datetime import datetime
 from fractions import Fraction
 
-VERSION = "2.4.14-beta"
+VERSION = "2.4.15-beta"
 VIDEO_EXTS = {".mkv", ".mp4", ".m4v"}
 SUB_EXTS = {".ass", ".ssa", ".srt"}
 EP_RE = re.compile(r"(?i)(?<![A-Z0-9])S(\d{1,2})[ ._-]*E(\d{1,3})(?![A-Z0-9])")
