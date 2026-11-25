@@ -400,10 +400,130 @@ def existing_language_sidecar_paths(output, target_language="eng"):
 
 
 def existing_chinese_sidecar_paths(output):
-    """List possible .zh sidecar targets so preflight never overwrites a user's file."""
-    base = output.parent / (output.stem + ".zh")
+    """Find legacy and locale-specific Chinese/bilingual sidecars before processing."""
+    suffixes = (
+        ".zh", ".zh-tw", ".zh-cn",
+        ".zh-tw-en", ".zh-tw-ja", ".zh-tw-ko",
+        ".zh-cn-en", ".zh-cn-ja", ".zh-cn-ko",
+    )
     extensions = (".ass", ".ssa", ".srt", ".usf", ".vtt", ".sup", ".idx", ".sub")
-    return [Path(str(base) + ext) for ext in extensions if Path(str(base) + ext).exists()]
+    found = []
+    for suffix in suffixes:
+        base = output.parent / (output.stem + suffix)
+        found.extend(Path(str(base) + ext) for ext in extensions if Path(str(base) + ext).exists())
+    return found
+
+
+
+def normalize_ietf_language_tag(value):
+    """Normalize a BCP-47 tag for case-insensitive equality checks."""
+    return str(value or "").strip().replace("_", "-").lower()
+
+
+def identify_bilingual_subtitle_profile(subtitle_path, primary_language="eng"):
+    """Identify a Chinese+original-language sidecar from an explicit path marker.
+
+    Accepted Chinese variant markers:
+      zh-TW / zh-Hant / Traditional Chinese / 繁體中文
+      zh-CN / zh-Hans / Simplified Chinese / 簡體中文
+
+    An optional original-language suffix (EN/JA/KO) must agree with the selected
+    primary-language profile. The original language is never guessed from subtitle
+    text; when no suffix exists, the selected batch profile is used.
+    """
+    profile = next((item for item in LANGUAGE_PROFILES.values()
+                    if item["code"] == primary_language), None)
+    if profile is None:
+        raise RuntimeError("所選主要語言 {} 不在 English／Japanese／Korean 支援範圍。".format(
+            primary_language))
+
+    raw_path = str(subtitle_path).replace("\\", "/")
+    normalized = re.sub(r"[_\s]+", "-", raw_path.casefold())
+    locale_candidates = set()
+    for match in re.finditer(r"(?<![a-z0-9])zh-(tw|hant|cn|hans)(?![a-z])", normalized):
+        token = match.group(1)
+        locale_candidates.add("zh-TW" if token in {"tw", "hant"} else "zh-CN")
+    if re.search(r"繁體(?:中文)?|繁体(?:中文)?|traditional[-_ ]*chinese", raw_path, re.IGNORECASE):
+        locale_candidates.add("zh-TW")
+    if re.search(r"簡體(?:中文)?|简体(?:中文)?|simplified[-_ ]*chinese", raw_path, re.IGNORECASE):
+        locale_candidates.add("zh-CN")
+
+    if not locale_candidates:
+        raise RuntimeError(
+            "雙語字幕路徑未標明簡體或繁體，無法安全設定 zh-CN／zh-TW。"
+            "請在字幕資料夾或檔名加入 zh-CN_EN／zh-TW_EN，"
+            "或 Simplified Chinese／Traditional Chinese 標記。"
+        )
+    if len(locale_candidates) != 1:
+        raise RuntimeError("雙語字幕路徑同時包含簡體與繁體標記，無法唯一判定：{}".format(
+            ", ".join(sorted(locale_candidates))))
+
+    language_aliases = {
+        "en": "eng", "eng": "eng", "english": "eng",
+        "ja": "jpn", "jpn": "jpn", "japanese": "jpn",
+        "ko": "kor", "kor": "kor", "korean": "kor",
+    }
+    explicit_originals = set()
+    for match in re.finditer(
+        r"(?<![a-z0-9])zh-(?:tw|hant|cn|hans)-([a-z]{2,9})(?![a-z])", normalized
+    ):
+        token = match.group(1)
+        mapped = language_aliases.get(token)
+        if mapped is None:
+            raise RuntimeError("雙語字幕語系標記包含不支援的原語言 {!r}；目前只支援 EN／JA／KO。".format(
+                token))
+        explicit_originals.add(mapped)
+
+    if len(explicit_originals) > 1:
+        raise RuntimeError("雙語字幕路徑包含多個原語言標記，無法唯一判定。")
+    if explicit_originals and primary_language not in explicit_originals:
+        found = next(iter(explicit_originals))
+        raise RuntimeError("雙語字幕標記的原語言為 {}，但本批主要字幕設定為 {}；拒絕錯配。".format(
+            found, primary_language))
+
+    locale = next(iter(locale_candidates))
+    chinese_name = "繁體中文" if locale == "zh-TW" else "簡體中文"
+    track_name = "{} + {}".format(chinese_name, profile["name"])
+    original_suffix = {"eng": "en", "jpn": "ja", "kor": "ko"}[primary_language]
+    source_note = ("路徑明確標記原語言 {}".format(next(iter(explicit_originals)))
+                   if explicit_originals else "原語言依本批主要語言設定 {}".format(primary_language))
+    return {
+        "language_ietf": locale,
+        "track_name": track_name,
+        "chinese_name": chinese_name,
+        "original_language": primary_language,
+        "original_language_name": profile["name"],
+        "sidecar_suffix": ".{}-{}".format(locale.lower(), original_suffix),
+        "source_note": source_note,
+    }
+
+
+def infer_bilingual_original_language(track_name):
+    """Return EN/JA/KO only when a bilingual track title names exactly one original language."""
+    name = str(track_name or "").casefold()
+    patterns = {
+        "eng": r"(?<![a-z])(?:english|eng)(?![a-z])",
+        "jpn": r"(?<![a-z])(?:japanese|jpn|日本語|日文|日語)",
+        "kor": r"(?<![a-z])(?:korean|kor|한국어|韓國語|韓文|韓語)",
+    }
+    matches = [code for code, pattern in patterns.items() if re.search(pattern, name)]
+    return matches[0] if len(matches) == 1 else None
+
+
+def chinese_sidecar_suffix(track):
+    """Choose a descriptive sidecar suffix when locale and original language are explicit."""
+    props = track.get("properties", {}) or {}
+    ietf = normalize_ietf_language_tag(props.get("language_ietf"))
+    name = str(props.get("track_name") or "")
+    locale = {"zh-tw": "zh-tw", "zh-cn": "zh-cn"}.get(ietf)
+    if locale:
+        original = infer_bilingual_original_language(name)
+        if original and ("+" in name or "＋" in name):
+            suffix_code = {"eng": "en", "jpn": "ja", "kor": "ko"}[original]
+            return ".{}-{}".format(locale, suffix_code)
+        return ".{}".format(locale)
+    # Preserve the v2.4.14 .zh convention for older or generic Chinese tracks.
+    return ".zh"
 
 
 def ffprobe_info(ffprobe, path):
@@ -1769,6 +1889,11 @@ def verify_output(mkvmerge, ffmpeg, ffprobe, out_path, source_probe_info, logfil
                resolve_track_language(p)[0] == primary_language]
     if second_language == "zh":
         second = [p for p in props if p.get("track_name") == second_track_name and is_chinese_language_properties(p)]
+    elif normalize_ietf_language_tag(second_language).startswith("zh-"):
+        expected_ietf = normalize_ietf_language_tag(second_language)
+        second = [p for p in props if p.get("track_name") == second_track_name
+                  and is_chinese_language_properties(p)
+                  and normalize_ietf_language_tag(p.get("language_ietf")) == expected_ietf]
     else:
         second = [p for p in props if p.get("track_name") == second_track_name and p.get("language") == second_language]
     if len(primary) != 1 or len(second) != 1:
@@ -1915,6 +2040,8 @@ def verify_output(mkvmerge, ffmpeg, ffprobe, out_path, source_probe_info, logfil
         warnings.extend(subtitle_warnings)
     if second_language == "und":
         second_description = "雙語備用"
+    elif normalize_ietf_language_tag(second_language).startswith("zh-"):
+        second_description = second_track_name + " 備用"
     elif second_language == "eng" and "sdh" in second_track_name.casefold():
         second_description = "SDH 英文備用"
     else:
@@ -2352,7 +2479,12 @@ def export_english_sidecar(mkvextract, mkvmerge, ffprobe, output, logfile, sdh=F
             sidecar_label, suffix, temp_prefix = "SDH 英文字幕", ".en.sdh", "frame-en-sdh-"
         elif chinese:
             track, reason = choose_chinese_track_for_export(info)
-            sidecar_label, suffix, temp_prefix = "中文字幕／中英雙語字幕", ".zh", "frame-zh-sub-"
+            sidecar_label, suffix, temp_prefix = "中文字幕／中文＋原語言雙語字幕", ".zh", "frame-zh-sub-"
+            if track is not None:
+                suffix = chinese_sidecar_suffix(track)
+                track_name = str((track.get("properties", {}) or {}).get("track_name") or "")
+                sidecar_label = ("中文＋原語言雙語字幕" if "+" in track_name or "＋" in track_name
+                                 else "中文字幕")
         else:
             track, reason = choose_language_track_for_export(info, target_language)
             sidecar_label, suffix, temp_prefix = ("預設語言字幕（{}）".format(profile["name"]),
@@ -3076,8 +3208,8 @@ def mux_two_external_subtitles(mkvmerge, mkvextract, ffmpeg, ffprobe, video, pri
                                primary_language="eng", primary_track_name="English"):
     """Mux selected primary-language subtitle + a secondary subtitle."""
     output.parent.mkdir(parents=True, exist_ok=True)
-    if second_language == "und":
-        second_label = "原始雙語字幕"
+    if second_language == "und" or normalize_ietf_language_tag(second_language).startswith("zh-"):
+        second_label = "中文＋原語言雙語字幕"
     elif second_language == "eng" and "sdh" in second_track_name.casefold():
         second_label = "SDH 英文字幕"
     else:
@@ -3174,10 +3306,13 @@ def mux_two_external_subtitles(mkvmerge, mkvextract, ffmpeg, ffprobe, video, pri
 
 def mux_one(mkvmerge, mkvextract, ffmpeg, ffprobe, video, primary_sub, bilingual_sub, output, logfile,
             primary_language="eng", primary_track_name="English"):
-    """Two external subtitles: selected primary language default + bilingual backup."""
+    """Mux primary EN/JA/KO plus a locale-tagged Chinese+original-language backup."""
+    bilingual = identify_bilingual_subtitle_profile(bilingual_sub, primary_language)
+    write_log(logfile, "雙語字幕語系識別：{}；LanguageIETF={}；軌道名稱={!r}；{}。".format(
+        bilingual_sub, bilingual["language_ietf"], bilingual["track_name"], bilingual["source_note"]))
     return mux_two_external_subtitles(
         mkvmerge, mkvextract, ffmpeg, ffprobe, video, primary_sub, bilingual_sub, output, logfile,
-        second_track_name="Chinese + English", second_language="und",
+        second_track_name=bilingual["track_name"], second_language=bilingual["language_ietf"],
         require_source_without_subtitles=False, primary_language=primary_language,
         primary_track_name=primary_track_name)
 
@@ -3634,7 +3769,7 @@ def main():
 
     if mode_choice == "1":
         print("\n工作模式 1 的字幕組合：")
-        print("1. 已有外掛中英雙語字幕：再加入主要語言字幕（{}；需提供兩個字幕資料夾；來源影片內嵌字幕不會保留）".format(primary_name))
+        print("1. 已有外掛中文＋原語言雙語字幕：再加入主要語言字幕（{}；需提供兩個字幕資料夾；來源影片內嵌字幕不會保留）".format(primary_name))
         print("2. 無內嵌字幕影片：新增主要語言字幕（{}）+ 外掛純中文字幕（需提供兩個字幕資料夾）".format(primary_name))
         print("3. RARBG Subs：普通 English + English SDH（僅 English 語言設定）")
         print("4. RARBG Subs 普通 English + 外部中文字幕（僅 English 語言設定；不加入 SDH）")
@@ -3659,7 +3794,7 @@ def main():
             video_root = choose_folder(video_prompt)
             if dual_option == "1":
                 mode = "dual"
-                bilingual_root = choose_folder("2/4：選擇原始中英雙語字幕資料夾")
+                bilingual_root = choose_folder("2/4：選擇原始中文＋原語言雙語字幕資料夾（以 zh-TW／zh-CN 標明簡繁）")
                 english_root = choose_folder("3/4：選擇主要語言字幕資料夾（{}；ASS／SSA／SRT）".format(primary_name))
                 output_root = choose_folder("4/4：選擇新的輸出資料夾")
                 roots = [video_root, bilingual_root, english_root]
@@ -3686,7 +3821,7 @@ def main():
                         problems.append((key, "缺少或匹配不唯一：" + details, files))
                 for label, paths in (("影片", v_untagged), ("雙語字幕", b_untagged), ("英文字幕", e_untagged)):
                     for item in paths: problems.append(("未識別集數", "{} 檔名沒有唯一 SxxExx 編號".format(label), str(item)))
-                scan_summary = "影片 {} 個；中英雙語字幕 {} 個；{}字幕 {} 個。".format(len(videos), len(bilingual_files), primary_name, len(english_files))
+                scan_summary = "影片 {} 個；中文＋原語言雙語字幕 {} 個；{}字幕 {} 個。".format(len(videos), len(bilingual_files), primary_name, len(english_files))
             elif dual_option == "2":
                 mode = "dual_english_chinese"
                 english_root = choose_folder("2/4：選擇主要語言字幕資料夾（{}；ASS／SSA／SRT）".format(primary_name))
@@ -3962,7 +4097,7 @@ def main():
         print("注意：暫存工作檔位於所選輸出資料夾所在磁碟，請預留足夠空間。")
     else:
         print("影片處理：純無損封裝；不重新編碼影片或音訊。")
-    print("每個 MKV 完整驗證及正式發布後，都會抽取主要語言字幕 {}；並嘗試抽取唯一可識別的中文字幕／中英雙語字幕為同名 .zh（例如 .zh.srt）。多條中文候選且無唯一 Default、語言標籤矛盾或格式不支援時不猜測、不覆蓋。".format(primary_profile["suffix"]))
+    print("每個 MKV 完整驗證及正式發布後，都會抽取主要語言字幕 {}；中文／雙語旁掛檔依軌道標記命名，例如 .zh-tw-en.ass、.zh-cn-ja.ass。多條中文候選且無唯一 Default、語言標籤矛盾或格式不支援時不猜測、不覆蓋。".format(primary_profile["suffix"]))
     print("音訊篩選：只保留 English／Japanese／Korean；被排除語言不會進入最終 MKV。")
     if mode == "dual_english_chinese":
         print("字幕軌設定：{}（{}，Default Yes）；Chinese（zh，Default No）。".format(primary_name, primary_language))
