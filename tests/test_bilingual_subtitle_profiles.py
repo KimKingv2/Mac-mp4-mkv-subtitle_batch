@@ -129,10 +129,10 @@ class BilingualMuxCommandTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
             with mock.patch.object(mod, "validate_subtitle_source",
-                                   return_value=({"codec_name": "subrip"}, 3, "")), \\
+                                   return_value=({"codec_name": "subrip"}, 3, "")), \
                  mock.patch.object(mod, "validate_source",
-                                   return_value=(source_probe, source_mkv, "", "", 0)), \\
-                 mock.patch.object(mod, "run_text", side_effect=fake_run_text), \\
+                                   return_value=(source_probe, source_mkv, "", "", 0)), \
+                 mock.patch.object(mod, "run_text", side_effect=fake_run_text), \
                  mock.patch.object(mod, "verify_output", return_value=(True, "validation passed", [])) as verify:
                 ok, message = mod.mux_one(
                     "mkvmerge", "mkvextract", "ffmpeg", "ffprobe",
@@ -171,8 +171,8 @@ class BilingualSidecarExportTests(unittest.TestCase):
                 Path(destination).write_bytes(ass_bytes)
                 return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
-            with mock.patch.object(mod, "mkvmerge_info", return_value=(info, 0, "")), \\
-                 mock.patch.object(mod, "run_text", side_effect=fake_run), \\
+            with mock.patch.object(mod, "mkvmerge_info", return_value=(info, 0, "")), \
+                 mock.patch.object(mod, "run_text", side_effect=fake_run), \
                  mock.patch.object(mod, "validate_subtitle_source",
                                    return_value=({"codec_name": "ass"}, 18, "")):
                 ok, message, status = mod.export_chinese_sidecar(
