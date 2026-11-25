@@ -1,0 +1,32 @@
+FRAME Cinema MKV Batch v2.4.4-beta - Cross-container video CodecID normalization
+================================================================================
+
+Observed user log
+-----------------
+The Shameless US S01 MP4 inputs were correctly paired with RARBG ordinary English and external Chinese ASS subtitles. `mkvmerge` completed with exit code 0 and no warnings. Validation stopped on the first video track because the source MKVToolNix JSON had `properties.codec_id=None`, while the newly written Matroska output had `properties.codec_id='V_MPEGH/ISO/HEVC'`.
+
+Cause
+-----
+Matroska CodecID is a container-level identifier. A non-Matroska source such as MP4 may not expose this Matroska-specific field in `mkvmerge -J`. On writing the output as MKV, MKVToolNix assigns the corresponding Matroska CodecID. The previous validator compared the source and output field literally, treating a missing source-side container identifier as an elementary-stream codec change.
+
+Fix
+---
+- Accept only a missing source video CodecID -> present output CodecID when the source and output mkvmerge human-readable codec descriptions are both present and exactly equal.
+- Additionally require the output CodecID to match a known video codec/display-description pairing: HEVC, AVC, AV1, VP9, MPEG-2 or Theora.
+- Explicit source CodecID changes remain rejected. Unknown/mismatched CodecIDs remain rejected. Audio and subtitle CodecID comparisons remain strict.
+- The later FFprobe validation remains unchanged and strictly checks actual codec_name, profile, dimensions, pixel format, field order, color metadata and bit-depth fields when available. Packet-count comparison and full FFmpeg A/V decode remain required.
+
+Tests
+-----
+- Source CodecID None -> V_MPEGH/ISO/HEVC with unchanged HEVC/H.265/MPEG-H descriptor: PASS.
+- Source CodecID None -> V_MPEG4/ISO/AVC with unchanged AVC/H.264 descriptor: PASS.
+- HEVC descriptor paired with AVC output CodecID: REJECTED.
+- Explicit source CodecID changed to a different output CodecID: REJECTED.
+- Audio CodecID missing -> A_AAC is not relaxed: REJECTED.
+- Full unit suite: 62/62 PASS.
+- Python py_compile: PASS.
+- ZIP integrity: PASS.
+
+Limitations
+-----------
+The build environment does not include MKVToolNix, so no real mkvmerge/mkvextract end-to-end test was possible. The fix addresses the exact mismatch in the provided log using the existing source/output codec descriptions, while FFprobe continues to validate the actual elementary stream. The user should rerun one episode on macOS; if it advances beyond the CodecID check, review any subsequent validation output rather than assuming the whole job has passed.

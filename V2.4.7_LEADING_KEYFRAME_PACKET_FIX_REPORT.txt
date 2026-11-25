@@ -1,0 +1,49 @@
+FRAME Cinema MKV Batch v2.4.7-beta - leading H.264/HEVC packet validation
+============================================================================
+
+User test observation
+---------------------
+- v2.4.6: Shameless US S01E01 source/output FFprobe video packets 82681 / 82616 (difference 65).
+- v2.4.6: Shameless US S01E02 source/output FFprobe video packets 80161 / 80109 (difference 52).
+- The log proves a packet-count difference, but by itself does not prove why it occurred.
+
+External behavior considered
+----------------------------
+- MKVToolNix has documented H.264 and HEVC parser behavior that drops frames before the first keyframe because they cannot be decoded properly.
+- The tool does not assume every packet-count reduction is this behavior. It recognizes only an exact leading prefix ending at the first source keyframe.
+
+Narrow correction
+-----------------
+- `ffprobe_video_packet_timing` now reads codec name and keyframe flags in addition to packet PTS/duration.
+- A packet-count reduction is considered only for matching H.264/HEVC tracks.
+- The missing count must equal the exact number of source packets preceding the first keyframe; the output's first packet must be a keyframe.
+- FFmpeg decodes the complete source and output video streams to `framemd5` in memory; no intermediate image or video files are written.
+- Require the same decoded frame count, every per-frame MD5 in the same order, and matching relative PTS/duration. Equal exact CFR framemd5 clocks require exact timestamp equality; different clocks are accepted only when both allow a maximum 1 ms quantization tolerance.
+- Then compare remaining source/output packet durations and relative PTS, require exact CFR metadata, and require output DefaultDuration to match the computed frame period.
+- Only the video packet-count equality check is replaced by this stronger decoded-frame proof in the exact accepted prefix-drop case. Audio packet counts remain strict. Other packet differences remain failures.
+
+Regression coverage
+-------------------
+- CFR 24000/1001 MP4 -> MKV timebase normalization accepted.
+- Non-prefix packet loss rejected.
+- Prefix length not ending at first source keyframe rejected.
+- Output not beginning with keyframe rejected.
+- Prefix-drop allowance restricted to matching H.264/HEVC.
+- Missing decoded-frame proof rejected.
+- Decoded frame count, MD5, PTS and duration differences rejected.
+- Existing language profiles, RARBG subtitle selection, audio allowlist, metadata, chapter/attachment, publication safety and encoding tests retained.
+- Full unit test suite: 90/90 PASS.
+- Python syntax compilation: PASS.
+
+FFmpeg/FFprobe integration smoke test
+-------------------------------------
+- Generated a synthetic 3-second HEVC Main 24000/1001 MP4.
+- Stream-copied it to MKV with FFmpeg.
+- FFmpeg framemd5: 72 source frames and 72 output frames; all per-frame MD5, relative PTS and duration values matched exactly on the same 1001/24000 frame clock.
+- FFprobe packet counts: 72 source / 72 output.
+
+Limitations
+-----------
+- The build environment does not include `mkvmerge`/`mkvextract`; no real MKVToolNix v103.0 integration test was possible.
+- The pasted packet counts alone do not establish that the user's 65/52 packets are precisely a pre-keyframe prefix. v2.4.7 will inspect the real files and still fail closed unless the exact prefix and decoded-frame identity conditions pass.
+- First real-Mac validation should be limited to Shameless S01E01. Do not batch all 12 episodes until final MKV playback, subtitle flags, extracted `.en` sidecar and the full report pass.

@@ -1,0 +1,32 @@
+FRAME Cinema MKV Batch v2.4.10-beta - AAC CodecID normalization
+================================================================
+
+User-reported real run (v2.4.9-beta):
+- mkvmerge completed successfully with exit code 0 and no warnings.
+- DefaultDuration CFR/timing verification passed.
+- The only reported blocker was audio track 1 `codec_id`: source None, output `A_AAC`.
+- The source was an MP4 with one AAC audio track; this task concerns only cross-container CodecID representation.
+
+Fix:
+- Accept only when there is exactly one audio track in both source and output.
+- Source Matroska CodecID must be absent (None); output CodecID must be exactly `A_AAC`.
+- Source and output mkvmerge human-readable codec descriptions must be exactly equal and explicitly contain the AAC token.
+- No other audio CodecID is relaxed. Explicit source CodecID values remain strict.
+
+Independent checks remain strict:
+- FFprobe codec_name and profile.
+- Sample rate, channel count, channel layout and bit-depth fields.
+- Audio packet count equality.
+- Full FFmpeg decode of output audio/video.
+- Language, LanguageIETF, track name, Default, Forced, Enabled and all other protected properties.
+
+Regression coverage added:
+- Single AAC audio track None -> A_AAC accepted.
+- A_OPUS / other non-AAC output CodecID rejected.
+- A_AAC with a non-AAC description rejected.
+- Explicit source CodecID changes rejected.
+- Multiple audio tracks rejected.
+- Channel-count change remains rejected despite the narrow CodecID normalization.
+
+Build limitation:
+- This environment does not contain MKVToolNix, so real v104.0 mkvmerge/mkvextract end-to-end validation remains pending on the user's Mac.

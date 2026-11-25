@@ -1,0 +1,21 @@
+FRAME Cinema MKV Batch v2.4.14-beta - Build Verification
+========================================================
+
+Change:
+- After every successfully verified and atomically published MKV, the tool now attempts to export the unique Chinese or Chinese-bilingual subtitle track as a same-basename `.zh` sidecar.
+- Primary EN/JA/KO sidecar behavior remains unchanged.
+- Chinese track identification supports zh/zho/chi language tags and explicit Chinese/中文/中英 titles, including `Chinese + English` tracks with Language=und.
+- Multiple Chinese candidates require a unique Default track; ambiguity and contradictory tags fail closed without guessing.
+- Existing .zh sidecars are protected in both preflight and export; MKV tracks, mux settings and validation requirements are unchanged.
+
+Tests:
+- Python syntax compile: PASS
+- Full unittest suite: PASS (132/132)
+- Chinese-language selector and bilingual-title tests: PASS
+- Ambiguous and conflicting Chinese track rejection: PASS
+- Real mocked mkvextract SRT export to `.zh.srt`: PASS
+- Real mocked mkvextract ASS export to `.zh.ass`: PASS
+- Existing `.zh` no-overwrite test: PASS
+- No-Chinese-track safe-not-export test: PASS
+- ZIP integrity and fresh-extraction test: PASS (verified after packaging)
+- Real MKVToolNix macOS end-to-end: NOT RUN in build container (MKVToolNix unavailable).

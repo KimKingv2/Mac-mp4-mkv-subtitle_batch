@@ -1,0 +1,19 @@
+FRAME Cinema MKV Batch v2.4.11-beta - Build verification
+=========================================================
+
+Fix: narrow MP4 AAC sample-size -> optional Matroska BitDepth normalization.
+- Exactly one audio track in source and output.
+- Source mkvmerge `audio_bits_per_sample` must equal 16; output must omit the field.
+- Source Matroska CodecID must be missing; output must be exactly A_AAC.
+- mkvmerge codec descriptions must be identical and explicitly AAC.
+- FFprobe codec/profile/sample rate/channel count/layout and bit-depth fields remain strict.
+- Audio packet counts and full A/V decode remain mandatory.
+
+Build verification:
+- Python syntax compilation: PASS.
+- Full unittest suite: 111/111 PASS.
+- New AAC BitDepth normalization regression cases: 7/7 PASS.
+- Synthetic FFmpeg AAC MP4 -> MKV stream-copy smoke test: FFprobe stream metadata matches and audio packet counts match (95/95).
+- ZIP integrity: PASS.
+- Real MKVToolNix v104.0 integration is NOT RUN; mkvmerge/mkvextract are unavailable here.
+- User Shameless S01E01 source and Failed outputs are not present; final macOS end-to-end validation remains required.

@@ -1,0 +1,9 @@
+FRAME Cinema MKV Batch v2.4.6-beta - Build verification
+=======================================================
+- Python syntax compilation: PASS.
+- Full unittest suite: 81/81 PASS.
+- DefaultDuration CFR / per-packet timing regression tests: 10/10 PASS.
+- Existing RARBG matching/classification, language profile, audio allowlist, CodecID, display dimensions, Default/Forced flags, metadata, subtitle and atomic publication tests: PASS.
+- Synthetic CFR MP4 -> MKV FFmpeg stream-copy smoke test: PASS; FFprobe read and compared 72 video packets at 24000/1001 fps.
+- ZIP integrity: checked after packaging.
+- Real MKVToolNix integration: NOT RUN; mkvmerge/mkvextract are not installed in the build environment. The user must rerun one episode on macOS.

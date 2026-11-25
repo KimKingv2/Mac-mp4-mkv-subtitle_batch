@@ -1,0 +1,24 @@
+FRAME Cinema MKV Batch v2.4.0-beta - Language Profile Test Report
+=================================================================
+
+Python syntax compilation: PASS
+Unit test suite: 43/43 PASS
+
+Verified cases:
+1. Keep English (eng), Japanese (jpn), Korean (kor) tracks.
+2. Exclude Russian (rus) and other recognized non-allowlisted languages.
+3. Treat Language=rus + LanguageIETF=ru-RU as the same Russian language.
+4. Treat Language=zho + LanguageIETF=zh-Hans as the same Chinese language.
+5. Treat Language=fra + LanguageIETF=fr-FR as the same French language.
+6. Infer clear track titles such as Russian Dub or 中文配音 when language tags are und.
+7. Stop on unknown/ambiguous und tracks rather than deleting a possible allowed language.
+8. Stop if FFprobe and MKVToolNix provide conflicting explicit language tags for the same audio stream.
+9. Preserve original default flags for retained audio; choose a fallback only when all original defaults are excluded.
+10. Set the primary subtitle language profile to English/Japanese/Korean and use .en/.ja/.ko sidecar suffixes.
+11. Mocked dual-subtitle mux command passes --audio-tracks to MKVToolNix, excludes Russian, keeps English/Japanese and selects a fallback audio default correctly.
+12. Preserve the English-only guard for RARBG 3_English/4_English workflows.
+
+Not tested:
+- Real mkvmerge/mkvextract integration; MKVToolNix was not installed in this build environment.
+- Real Mac playback and final output inspection.
+- Track-ID mapping on all MP4/M4V container variants. Test representative inputs on the target Mac before a large batch.

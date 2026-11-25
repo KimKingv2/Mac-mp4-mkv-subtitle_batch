@@ -1,0 +1,14 @@
+FRAME Cinema MKV Batch v2.4.8-beta - Build verification
+=======================================================
+- Python syntax compilation: PASS.
+- Full unittest suite: 94/94 PASS.
+- Prefix-suffix framemd5 regression cases: PASS.
+- FFmpeg/FFprobe HEVC integration smoke test: PASS.
+  - Generated synthetic 24000/1001 CFR HEVC MP4.
+  - Stream-copied to MKV without re-encoding.
+  - FFprobe packet counts: 72 / 72.
+  - FFmpeg framemd5 decoded frames: 72 / 72.
+  - Every frame MD5, relative PTS and duration matched exactly (0 ns quantization tolerance).
+- ZIP integrity: checked after packaging.
+- Real MKVToolNix v103.0 integration: NOT RUN; mkvmerge/mkvextract are unavailable in the build environment.
+- User's Shameless files are not present in this build environment; final Mac end-to-end validation remains required.

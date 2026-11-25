@@ -1,0 +1,29 @@
+FRAME Cinema MKV Batch v2.4.2-beta - Single Video Default Flag Fix
+==================================================================
+
+Reported symptom
+----------------
+The user's MP4 source had exactly one video track. MKVToolNix source inspection returned default_track=None, while the remuxed MKV returned default_track=True. The P0 metadata validator treated this representational difference as a changed video track flag and moved the otherwise muxed output into Failed/.
+
+Fix
+---
+- Accept only the narrow case where the source and output each contain exactly one video track, the source default_track is absent/None, and the output default_track is explicitly True.
+- Log this as implicit single-video Default normalization.
+- Continue strict validation for multi-video sources, explicit source False, output False, all audio and subtitle flags, and all other protected metadata.
+- Apply the corresponding FFprobe video disposition exception only when the MKVToolNix metadata independently confirms the same narrow single-video promotion. No audio/subtitle disposition relaxation.
+
+Regression tests
+----------------
+- Single video: None -> True accepted: PASS.
+- Single video: None -> False rejected: PASS.
+- Multiple video tracks: None -> True remains strict: PASS.
+- Audio None -> True remains strict: PASS.
+- Helper recognizes only the narrow single-video promotion: PASS.
+- FFprobe video default mismatch accepted only when explicitly enabled: PASS.
+- FFprobe audio default mismatch remains rejected: PASS.
+- Full test suite: 50 tests, all PASS.
+- Python bytecode compilation: PASS.
+
+Limitations
+-----------
+Real MKVToolNix binaries are not installed in the build environment. This fix addresses the exact reported metadata comparison failure, but the user's MP4 files should be rerun with v2.4.2-beta to confirm the remaining real-file validation stages and playback.

@@ -1,0 +1,9 @@
+FRAME Cinema MKV Batch v2.4.7-beta - Build verification
+=======================================================
+- Python syntax compilation: PASS.
+- Full unittest suite: 90/90 PASS.
+- Dedicated DefaultDuration/leading-keyframe/framemd5 regression module: 19/19 PASS.
+- Synthetic HEVC 24000/1001 MP4 -> MKV FFmpeg stream-copy smoke test: 72 decoded frames; source/output framemd5 values and relative timing identical.
+- FFprobe source/output packet counts in synthetic smoke test: 72 / 72.
+- ZIP integrity: checked after packaging.
+- Real MKVToolNix v103.0 integration: NOT RUN; mkvmerge/mkvextract are unavailable in the build environment.

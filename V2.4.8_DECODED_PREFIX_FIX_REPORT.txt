@@ -1,0 +1,33 @@
+FRAME Cinema MKV Batch v2.4.8-beta - decoded prefix comparison correction
+==========================================================================
+
+User v2.4.7 real-Mac result
+---------------------------
+- MKVToolNix v103.0 completed muxing with exit code 0 and no warnings.
+- S01E01 FFprobe source/output video packet counts: 82681 / 82616 (difference 65).
+- v2.4.7 full framemd5 decode produced source/output frame counts: 82681 / 82616.
+- v2.4.7 compared the entire source decoded-frame list to the output list before trimming the verified pre-keyframe packet prefix, so it rejected before comparing the retained frame sequence.
+- S01E02 showed the same pattern in the previous run (80161 / 80109 packets); its latest v2.4.7 run was not complete in the supplied log.
+
+Correction
+----------
+- Added `leading_keyframe_packet_drop_candidate` to independently verify matching H.264/HEVC codec, exact packet-count difference equal to the source packet prefix before its first keyframe, and output beginning with a keyframe.
+- Once that candidate passes, framemd5 comparison skips only the same number of leading decoded-frame records from the source, corresponding to the independently verified packet prefix.
+- The remaining source frames must equal the full output frame count and match every frame MD5 in order, relative PTS and duration within the existing time-base tolerance.
+- The existing `compare_implicit_default_duration_timing` still rechecks CFR rates, keyframe prefix position, output DefaultDuration, every retained packet duration and relative PTS.
+- Audio packet counts, stream metadata, chapter/attachment checks, subtitle checks and full output A/V decode remain unchanged and strict.
+
+Regression coverage
+-------------------
+- Verified two-frame decoded prefix skip with exact retained suffix match.
+- Retained-frame MD5 mismatch rejected.
+- Wrong prefix length / remaining frame-count mismatch rejected.
+- Leading packet candidate rejected when output does not begin with keyframe.
+- Full unit test suite: 94/94 PASS.
+- Python syntax compilation: PASS.
+
+Limitations
+-----------
+- This corrects the identified v2.4.7 comparison-order defect; it does not establish in advance that the user's 65/52 leading packets are all safely discardable.
+- The actual Shameless source files are not present in the build environment. Real validation must still establish exact keyframe-prefix evidence and identical retained decoded frames on the user's Mac.
+- Build environment has FFmpeg/FFprobe but no MKVToolNix; no real mkvmerge/mkvextract v103.0 end-to-end test was possible.

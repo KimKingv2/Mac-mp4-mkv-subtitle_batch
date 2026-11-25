@@ -1,0 +1,36 @@
+FRAME Cinema MKV Batch v2.4.9-beta - Single-audio Forced flag normalization
+=============================================================================
+
+User-reported real run:
+- MKVToolNix completed remux successfully (exit code 0, no warnings).
+- Video DefaultDuration normalization passed: source/output both CFR 24000/1001; packet durations and relative PTS matched within the 1 ms Matroska timestamp quantization bound.
+- Final metadata validation stopped only because the sole audio track had source `forced_track=None` and output `forced_track=False`.
+
+Root cause:
+- The source container did not provide the Matroska Forced flag for its sole audio track.
+- MKVToolNix's MKV output explicitly materialized the default false value.
+- The generic protected-field comparison treated the missing source representation and explicit default output representation as a content/track change.
+
+Fix:
+- Accept only when the source and output each contain exactly one audio track, source `forced_track` is absent/None, and output `forced_track` is exactly False.
+- The exception is restricted to the single-audio-track case. It does not accept output Forced=True, explicit source flag changes, or multiple audio tracks.
+- Subtitle Forced comparison remains strict.
+- All other audio fields remain strict: legacy/IETF language, track name, Default, Enabled, CodecID, codec description, channels, sampling frequency, bit depth, FFprobe stream properties, packet count and full A/V decode.
+
+Matroska specification note:
+- RFC 9559 §5.1.4.1.6 defines FlagForced with default 0 and says it applies only to subtitle tracks. The implementation nevertheless uses a narrow single-audio None->False normalization rather than broadly ignoring audio flag comparisons.
+- Reference: https://www.rfc-editor.org/rfc/rfc9559.html#section-5.1.4.1.6
+
+Regression coverage:
+- Single audio track None -> False: accepted.
+- Single audio track None -> True: rejected.
+- Explicit False -> True: rejected.
+- Multiple audio tracks None -> False: rejected.
+- Language change despite normalization: rejected.
+- Channel-count change despite normalization: rejected.
+- Existing subtitle None -> False strict rejection remains covered.
+
+Build verification:
+- Python syntax compilation: PASS.
+- Complete unittest suite: 99/99 PASS.
+- This build environment does not contain MKVToolNix; actual macOS MKVToolNix v104.0 end-to-end validation remains pending.

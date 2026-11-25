@@ -1,0 +1,171 @@
+FRAME Cinema MKV Batch v2.4.14-beta - Chinese/Bilingual .zh Sidecar Export
+============================================================================
+
+- Python syntax compilation: PASS.
+- Full unittest suite: 132/132 PASS (119 existing + 13 new Chinese sidecar tests).
+- Chinese language recognition: zh / zho / chi and BCP-47 zh-Hans supported.
+- Bilingual title recognition: `Chinese + English`, Chinese/中文/中英 labels accepted when the track's language metadata is und or English; conflicting language tags fail closed.
+- Multiple Chinese tracks: selected only when exactly one candidate has Default Yes; ambiguous candidates are not guessed.
+- SRT `.zh.srt` extraction: PASS using mocked mkvextract, with FFprobe subtitle event validation.
+- ASS `.zh.ass` extraction: PASS using mocked mkvextract, with FFprobe subtitle event validation.
+- Existing `.zh` sidecars: preserved; no overwrite.
+- Missing Chinese subtitle track: recorded as not exported; no guessed selection and no MKV content changes.
+- `.zh` existing-file collision: included in preflight for every batch mode.
+- Chinese sidecar export is attempted after successful final MKV publication in every formal mode; the existing primary `.en` / `.ja` / `.ko` and SDH export behavior remains unchanged.
+- Real MKVToolNix macOS end-to-end test: NOT RUN in the build container; mock extraction tests do not certify real mkvextract behavior.
+
+FRAME Cinema MKV Batch v2.4.6-beta - DefaultDuration frame-timing normalization
+================================================================================
+- Added a gated MP4/non-Matroska -> MKV `default_duration` normalization. It is accepted only when the source field is absent, output field is a positive integer, and there is exactly one video track on each side.
+- FFprobe verification requires equal source/output avg_frame_rate and r_frame_rate, with avg == r (CFR); output DefaultDuration must equal the frame-rate-derived nanosecond duration within 1 ns.
+- Every packet must expose PTS and duration; packet counts, per-packet durations and relative PTS are compared within one coarser time-base tick, capped at 1 ms. Missing timing data, VFR/ambiguous rates, altered packet timing or insufficient timestamp precision are rejected.
+- Added 10 dedicated regression tests: expected 24000/1001 CFR normalization accepted; wrong DefaultDuration rejected; VFR/ambiguous rates rejected; nonuniform source packet durations rejected; output duration changes rejected; packet-count changes rejected; relative PTS changes rejected; missing timing rejected; gate scope checked; strict MKV metadata comparison remains default.
+- Full unittest suite: 81/81 PASS.
+- Python syntax compilation: PASS.
+- Synthetic FFmpeg stream-copy smoke test: generated 3-second 24000/1001 CFR MP4 (72 video packets), remuxed to MKV, then ran real FFprobe packet timing comparison; PASS.
+- Real MKVToolNix end-to-end testing: NOT RUN. This build environment has FFmpeg/FFprobe but no mkvmerge/mkvextract. The user's macOS rerun remains the integration test.
+
+Previous version regression reports
+===================================
+
+FRAME Cinema MKV Batch v2.4.5-beta - Display dimensions normalization regression
+===============================================================================
+- Full unittest suite and Python syntax check are recorded in the v2.4.5 build verification.
+- Display dimensions normalization is restricted to an unchanged single-video coded pixel size with output display size equal to that pixel size.
+- Non-default display dimensions, changed coded dimensions, explicit source display dimensions and multi-video tracks remain strict.
+- FFprobe now checks sample_aspect_ratio and display_aspect_ratio.
+- Real MKVToolNix end-to-end validation remains pending.
+
+Previous regression reports
+===========================
+
+FRAME Cinema MKV Batch v2.4.4-beta - Cross-container CodecID regression
+=========================================================================
+- Full unittest suite: 62/62 PASS.
+- Python syntax compilation: PASS.
+- Non-Matroska missing source CodecID -> matching Matroska video CodecID: PASS.
+- Codec description / CodecID mismatch: rejected.
+- Explicit source CodecID change: rejected.
+- Audio CodecID difference: remains strict.
+- Existing language, RARBG, P0 publication, metadata, Default and Forced regression tests remain passing.
+- Real MKVToolNix end-to-end validation remains pending because MKVToolNix is not installed in the build environment.
+
+FRAME Cinema MKV Batch v2.4.0-beta - Language Profiles and Audio Allowlist
+==========================================================================
+
+Current tests
+-------------
+- Python syntax compilation: PASS.
+- 43 unit tests across language-profile, P0 publication/metadata, RARBG pairing and RARBG subtitle-classification suites: PASS.
+- Normalization of common ISO 639-1 / ISO 639-2 pairs: PASS, including rus/ru-RU, zho/zh-Hans and fra/fr-FR.
+- Audio allowlist: EN/JA/KO retained; explicit Russian and other known non-allowlisted languages excluded: PASS.
+- Explicitly tagged Russian track with language=rus and language_ietf=ru-RU: safely classified as Russian and excluded: PASS.
+- Und-tagged Russian track with clearly named "Russian Dub": safely inferred as Russian and excluded: PASS.
+- Unknown / ambiguous audio language: fail-closed stop: PASS.
+- FFprobe vs MKVToolNix explicit per-track language mismatch: stop before muxing: PASS.
+- Retained audio defaults preserved; fallback selected only when all source defaults were filtered: PASS.
+- English / Japanese / Korean subtitle profiles and .en / .ja / .ko sidecar suffixes: PASS.
+- Mocked dual-subtitle mux command: --audio-tracks keeps only English/Japanese, excludes Russian, and applies fallback audio Default correctly: PASS.
+- RARBG English-only modes remain guarded against Japanese/Korean profile selection: code-path guard retained.
+
+Behavior notes
+--------------
+- Language profile is selected once per formal batch. A batch should contain works sharing the same primary subtitle language; mixed English/Japanese/Korean shows should be processed in separate batches.
+- All formal mux workflows retain only identifiable English/Japanese/Korean audio tracks. Retained audio is copied, not re-encoded.
+- If language tags are missing, only a clear track title can identify a track. Unclear tracks stop the episode rather than risking removal of English/Japanese/Korean audio.
+- The selected profile determines subtitle Default and the extracted companion extension; it does not force the audio default unless all original audio defaults were filtered out.
+
+Limitations
+-----------
+- Real MKVToolNix binaries are not installed in the build environment. Actual mkvmerge/mkvextract option behavior, MP4/MP4V track-ID mappings, and full macOS end-to-end output have not been certified here.
+- Before batch use, test 1-2 representative files containing multiple audio languages (e.g. Russian + English), subtitles, chapters and attachments on the target Mac. Verify the resulting MKV contains only English/Japanese/Korean audio and plays correctly.
+
+FRAME Cinema MKV Batch v2.1-beta - Test Report
+==============================================
+
+Environment available in the build/test container
+--------------------------------------------------
+- Python 3 syntax compilation: passed.
+- FFmpeg / FFprobe executable: available.
+- libx265 encoder: available.
+- SVT-AV1 encoder: available.
+- zscale filter: available.
+- tonemap filter: available.
+- Real MKVToolNix binaries: NOT installed in the build/test container.
+
+Tests performed
+---------------
+1. Python bytecode compilation: passed.
+2. H.264 SDR MP4 -> HEVC Main10 10-bit video-only encode: passed.
+3. H.264 SDR MP4 -> AV1 Main 10-bit video-only encode using SVT-AV1: passed.
+4. 2560x1440 -> 1920x1080 Lanczos downscale: passed.
+5. Static HDR10 metadata detection: passed on a synthetic HDR10 MKV.
+6. HDR10 -> BT.709 SDR tonemap: passed on a synthetic HDR10 MKV.
+7. HDR preserve path and metadata checks: previously passed in the local FFmpeg test environment.
+8. Video-only encode + mocked MKVToolNix prepare step + final dual-subtitle mux/validation simulation: passed for a short H.264/AAC/SRT sample.
+9. Original test source SHA-256 before/after encoding test: unchanged.
+10. Automatic skip logic revised: only skips when codec/bit depth already match the selected output and no scaling or HDR->SDR conversion is required.
+11. Bitmap subtitle validation path: implemented as FFprobe packet readability check; no real PGS/VobSub sample was available for end-to-end validation.
+12. v2.0.1 regression test: matching HEVC Main10 1080p source with unknown color_transfer + preserve mode -> auto-skip before metadata guard and continue lossless remux (mocked FFprobe result).
+13. v2.0.1 safety regression test: unknown 10-bit/wide-gamut metadata with a real codec change / required encode -> remains blocked; HDR-to-SDR with unknown transfer -> remains blocked.
+
+
+14. v2.1 quality-test mode: Python syntax compilation passed.
+15. v2.1 quality-test integration smoke test on a generated 220-second 32x32 H.264 MKV: produced three separate 30-second HEVC Main10 samples with x265 CRF 21 / Very Slow; all three passed codec, pixel-format, dimensions, duration, and full video-decode checks.
+16. v2.1 source video-track byte counter: FFmpeg stream-copy remux to stdout pipe completed and produced a byte count without writing a full video-only file.
+17. v2.1 estimate path: combined sample bitrate, source duration, and retained non-video byte estimate produced the report summary.
+18. v2.1 incomplete color-metadata override: tested on a generated 10-bit HEVC source without color tags; explicit confirmation produced three valid HEVC Main10 samples. The production-batch override remains unverified against real MKVToolNix in this environment.
+19. v2.1 startup integration: quality-test mode runs without MKVToolNix installed; batch mode checks MKVToolNix only after the user selects a batch workflow.
+20. x265 settings selection: verified CRF 21, Very Slow, auto-skip disabled, and explicit incomplete-color-metadata opt-in values are saved correctly.
+
+Important limitations
+---------------------
+- The simulated MKVToolNix tools are test mocks, not real mkvmerge/mkvextract. They cannot certify all real Matroska chapter, attachment, track-flag, and sidecar-extraction behavior.
+- No real Mac hardware test was performed.
+- The v2.1 sample test used a tiny, low-complexity synthetic clip; it verifies the workflow and output checks, not picture quality or actual 1080p performance. A complex synthetic sample run with x265 Very Slow did not finish within the 120-second container command window and was stopped; real encoding speed depends heavily on the Mac and source content.
+- The estimated final file size is approximate. Three short scenes may not represent the whole episode; the displayed ±20% interval is a planning guide, not a guaranteed bound.
+- The v2.0.1 regression test uses mocked FFprobe results for the decision branch; it does not constitute a real file/MKVToolNix end-to-end test.
+- The package is therefore labelled v2.1-beta. Test 1-2 episodes on the target Mac with real MKVToolNix before running a large batch.
+
+
+FRAME Cinema MKV Batch v2.1.2-beta - New dual-subtitle workflow checks
+======================================================================
+
+1. Python bytecode compilation: PASS.
+2. Mocked mkvmerge workflow: PASS; new 1B mode passes --language 0:eng / --language 0:zh, English track name + Default Yes, Chinese track name + Default No.
+3. Source protection: PASS; when source MKVToolNix metadata contains any embedded subtitle track, new 1B mode stops before mkvmerge runs.
+4. Output validator: PASS with mocked MKVToolNix/FFprobe/FFmpeg data; exactly two subtitle tracks, English default, Chinese non-default, both subtitle parsers and full A/V decode check path are invoked.
+5. Episode filename pairing: PASS for SxxExx.en.srt and SxxExx.zh-TW.ass naming forms.
+6. Existing original dual-subtitle mode retained through a wrapper with its original expected track name/language (Chinese + English / und).
+7. Matroska language tag: uses BCP 47 zh for generic Chinese; validation accepts derived ISO 639-2 legacy field plus zh IETF tag.
+
+Limitations:
+- MKVToolNix is not installed in this build container. The new 1B workflow has not yet been tested end-to-end against a real MKVToolNix binary or on the user's Mac.
+- Mock integration checks do not certify all Matroska muxing/extraction edge cases. First run should be 1-2 sample episodes.
+- Subtitle checks confirm that tracks are readable and contain packets; they do not verify translation accuracy or subtitle/audio synchronization.
+
+
+FRAME Cinema MKV Batch v2.3.1-beta - RARBG English + Chinese Regression
+======================================================================
+21. Python syntax compilation: PASS.
+22. RARBG user sample classification: 3_English.srt is standard English; 4_English.srt is SDH; the new English+Chinese mode selects only the standard English track.
+23. Multiple standard English candidates are rejected rather than guessed: PASS.
+24. New mux wrapper requests Chinese / zh / Default No and requires a source without embedded subtitle tracks: PASS.
+25. Chinese subtitle filename SxxEyy key extraction used for per-episode pairing: PASS.
+26. Full previous P0 and RARBG test suite retained: 24/24 total tests PASS.
+
+Limitations: This build environment does not contain real MKVToolNix binaries. Real mkvmerge/mkvextract integration and macOS end-to-end remuxing remain untested. Chinese subtitle files must contain a unique SxxEyy token in the filename; unmatched or ambiguous files are reported, not guessed.
+
+
+v2.4.3-beta regression addendum
+-------------------------------
+- Single video track with source forced_track=None and remux output forced_track=False: PASS (equivalent implicit non-Forced state).
+- Single video track with source forced_track=None and output forced_track=True: FAIL as intended.
+- Explicit source forced_track=False to output True: FAIL as intended.
+- Multiple video tracks None to False: FAIL as intended; strict.
+- Audio forced_track None to False: FAIL as intended; strict.
+- Subtitle forced_track None to False: FAIL as intended; strict.
+- Existing single-video Default flag normalization remains passing.
+- Full suite: 57 tests, all PASS.
+- Python py_compile: PASS.
+- Real MKVToolNix is not installed in build environment; user Mac end-to-end verification remains necessary.

@@ -1,0 +1,33 @@
+FRAME Cinema MKV Batch v2.4.12-beta - FFprobe audio packet-summary index fix
+============================================================================
+
+User-reported v2.4.11 failure:
+- MKVToolNix / metadata checks passed through AAC BitDepth normalization.
+- Failure: audio packet summary track count differs (source 0, output 1).
+- Source has one video and one retained English AAC audio stream.
+
+Root cause:
+- ffprobe_packet_summary() requested `stream=codec_type,codec_name,nb_read_packets`.
+- The returned summary then read `stream.get("index")`, but index was not requested and was therefore None.
+- compare_ffprobe_packet_counts() filters source audio entries by the retained global FFprobe stream index. None-index entries are excluded, incorrectly yielding zero source audio tracks while output retained one.
+
+Fix:
+- Request `stream=index,codec_type,codec_name,nb_read_packets`.
+- Preserve the global FFprobe stream index in each summary entry.
+- The fix automatically covers formal mux validation and post-subtitle-append validation, both of which use ffprobe_packet_summary().
+- No packet-count check was relaxed. Retained audio track count, codec and packet counts remain strict.
+
+Regression tests:
+- Verify `index` is explicitly requested and retained.
+- Verify a single source audio stream at global index 1 is kept during packet comparison.
+- Verify selection of a retained source audio stream at global index 2 after excluding another language track.
+
+Build verification:
+- Python syntax compilation: PASS.
+- Full unittest suite: 114/114 PASS.
+- ZIP integrity: PASS.
+- Archive extraction and test rerun: PASS.
+
+Limitations:
+- This environment does not have MKVToolNix installed.
+- Real MKVToolNix v104.0 / FFmpeg 9.0.2 macOS end-to-end verification on the user's Shameless source has NOT been run here.

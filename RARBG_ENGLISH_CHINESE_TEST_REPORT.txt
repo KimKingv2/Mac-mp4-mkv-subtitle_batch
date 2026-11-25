@@ -1,0 +1,40 @@
+FRAME Cinema MKV Batch v2.3.1-beta
+RARBG 普通英文 + 外部中文字幕模式測試報告
+============================================
+
+變更內容
+--------
+- 新增工作模式 1 -> 子選項 4：RARBG Subs 普通 English + 外部中文字幕。
+- 影片來源：MP4／MKV／M4V 根目錄。
+- 英文來源：RARBG Subs 根目錄內，每集以影片完整檔名建立的子資料夾。
+- 中文來源：獨立字幕根目錄，ASS／SSA／SRT 檔名必須包含唯一 SxxEyy。
+- 英文分類：讀取字幕內容、SDH 標記及聲音描述；不使用 3_／4_ 序號當成字幕語義。
+- 若同時找到 SDH，本模式會記錄但不封裝 SDH；需要普通英文＋SDH 時仍使用子選項 3。
+
+預期封裝
+--------
+- Track 1: English，language=eng，Default=Yes，Forced=No。
+- Track 2: Chinese，language=zh，Default=No，Forced=No。
+- 來源影片若已有任何內嵌字幕軌，安全停止該集，不會靜默移除原字幕。
+- 完整驗證後，從最終 MKV 提取普通英文旁掛檔 <basename>.en.srt／.en.ass。
+- 中文字幕內嵌於 MKV，不額外匯出旁掛檔。
+
+自動測試
+--------
+- PASS: Python py_compile。
+- PASS: 使用使用者提供的 Shameless 3_English.srt 作為普通英文樣本。
+- PASS: 使用使用者提供的 Shameless 4_English.srt 作為 SDH 樣本；新模式選取普通英文並忽略 SDH，不會把 SDH 當成中文。
+- PASS: 同一集存在兩份普通英文時拒絕猜測。
+- PASS: 中文字幕 SxxEyy key 可被抽取，用於與影片集數一對一配對。
+- PASS: 新模式呼叫既有 English + Chinese 封裝器，Chinese=zh 且 Default=No。
+- PASS: 新模式要求來源無內嵌字幕；有任何字幕軌時由底層封裝流程拒絕。
+- PASS: 原有 P0／RARBG 測試全部保留。
+- PASS: 單元測試總計 24/24。
+- PASS: ZIP 完整性檢查。
+
+未完成／限制
+------------
+- 本建置環境沒有 MKVToolNix，未能使用真實 mkvmerge／mkvextract 對實際 MKV 做端到端封裝。
+- 尚未在使用者的 Mac 上測試外接磁碟及真實片源。
+- 中文字幕目前要求字幕檔名包含唯一 SxxEyy；若中文資料夾採用「季資料夾／01.srt」而檔名沒有集數標籤，會列為未識別，不會猜測。
+- 首次請先用一集測試，檢查配對預覽、兩條字幕的語言／Default 旗標及播放器實際顯示。

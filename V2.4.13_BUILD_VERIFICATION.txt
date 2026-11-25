@@ -1,0 +1,16 @@
+FRAME Cinema MKV Batch v2.4.13-beta - Build verification
+=========================================================
+
+Fix:
+- Text subtitle validation now writes the ASS muxer to pipe:1 instead of /dev/null.
+- Prevents FFmpeg 9.0.2's "File '/dev/null' already exists" false-success case.
+- Known fatal FFmpeg diagnostics reject subtitle validation even if a build returns code 0.
+- No subtitle output is written to disk; stdout is discarded by the parent process.
+
+Tests:
+- Python syntax compile: PASS
+- Full unittest suite: PASS (119/119), rerun from freshly extracted ZIP.
+- Real FFmpeg SubRip -> ASS pipe: PASS
+- Real FFmpeg ASS -> ASS pipe: PASS
+- ZIP integrity: PASS; fresh extraction, syntax compile and full tests all passed.
+- Real MKVToolNix macOS end-to-end: NOT RUN in build container.

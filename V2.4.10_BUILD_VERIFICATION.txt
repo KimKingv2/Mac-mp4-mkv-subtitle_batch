@@ -1,0 +1,20 @@
+FRAME Cinema MKV Batch v2.4.10-beta - Build verification
+=========================================================
+
+Fix: narrow MP4 -> MKV AAC audio CodecID normalization.
+- Accept only one source and one output audio track.
+- Source mkvmerge CodecID must be absent (None).
+- Output CodecID must be exactly A_AAC.
+- Source/output human-readable codec descriptions must be identical and explicitly contain AAC.
+- FFprobe still compares codec_name, profile, sample_rate, channels, channel_layout, bits_per_sample and bits_per_raw_sample.
+- Audio packet count and full A/V decode remain mandatory.
+- Non-AAC IDs, mismatching descriptions, explicit source IDs and multi-audio cases remain rejected.
+
+Build verification:
+- Python syntax compilation: PASS.
+- Full unittest suite: 104/104 PASS.
+- New AAC CodecID normalization regression cases: 6/6 PASS.
+- Real MKVToolNix v104.0 integration is NOT RUN; mkvmerge/mkvextract are unavailable here.
+- User Shameless S01E01 source/Failed outputs are not present; final macOS end-to-end validation remains required.
+Real MKVToolNix v104.0 integration is not available in this build environment.
+The user's Shameless S01E01 source and Failed outputs are not present here.

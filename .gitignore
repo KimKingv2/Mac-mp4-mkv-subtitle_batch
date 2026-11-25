@@ -1,0 +1,17 @@
+.DS_Store
+.env
+.env.*
+*.token
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.mkv
+*.mp4
+*.mov
+*.log
+*.tmp

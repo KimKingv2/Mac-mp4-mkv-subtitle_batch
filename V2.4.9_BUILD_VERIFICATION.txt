@@ -1,0 +1,14 @@
+FRAME Cinema MKV Batch v2.4.9-beta - Build verification
+=======================================================
+- Python syntax compilation: PASS.
+- Full unittest suite: 99/99 PASS.
+- New single-audio Forced normalization regression cases: 6/6 PASS.
+- Single audio source forced_track=None -> output False: accepted.
+- Single audio source forced_track=None -> output True: rejected.
+- Explicit source False -> output True: rejected.
+- Multi-audio source None -> output False: rejected.
+- Audio language and channel changes remain rejected even when the narrow flag normalization applies.
+- Existing subtitle Forced None -> False strict rejection: PASS.
+- Earlier DefaultDuration/CFR/framemd5 regression tests remain passing.
+- Real MKVToolNix v104.0 integration: NOT RUN; mkvmerge/mkvextract are unavailable in build environment.
+- User's Shameless S01E01 source and Failed outputs are not present here; final macOS end-to-end validation remains required.

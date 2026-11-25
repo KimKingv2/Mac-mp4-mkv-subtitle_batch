@@ -1,0 +1,38 @@
+FRAME Cinema MKV Batch v2.4.11-beta - AAC Matroska BitDepth normalization
+==========================================================================
+
+User-reported real run (v2.4.10-beta):
+- MKVToolNix completed remux with exit code 0 and no warnings.
+- DefaultDuration CFR/packet timing normalization passed.
+- AAC CodecID normalization passed (source None -> output A_AAC).
+- Single audio track Forced flag normalization passed (source None -> output False).
+- Remaining blocker: `audio_bits_per_sample` source 16 -> output None.
+
+Standards basis:
+- Matroska RFC 9559 defines Audio BitDepth as bits per sample and notes it is mostly used for PCM.
+- AAC is a compressed codec mapping; the container may omit Matroska BitDepth.
+- An MP4 reader may expose the QuickTime audio sample-size field as 16 even though that is not a requirement for Matroska AAC BitDepth.
+
+Fix (strictly narrow):
+- Accept only one source and one output audio track.
+- Source `audio_bits_per_sample` must be exactly 16; output value must be absent (`None`).
+- Source Matroska CodecID must be absent; output CodecID must be exactly `A_AAC`.
+- Source and output mkvmerge codec descriptions must be identical and explicitly identify AAC.
+- Any other bit-depth value, explicit source CodecID, multi-audio case, non-AAC codec, or explicit output BitDepth mismatch remains rejected.
+
+Independent checks remain strict:
+- FFprobe codec_name, profile, sample_rate, channels, channel_layout, bits_per_sample and bits_per_raw_sample.
+- Exact audio packet count equality.
+- Full FFmpeg audio/video decode.
+- Language, LanguageIETF, track name, Default, Forced, Enabled and all other protected metadata.
+
+Tests:
+- Added 7 regression tests for the observed AAC-only normalization and rejection cases.
+- Full unittest suite: 111/111 PASS.
+- Python syntax compilation: PASS.
+- Synthetic AAC MP4 -> MKV remux using FFmpeg stream copy: codec_name=aac, profile=LC, sample_fmt=fltp, sample_rate=48000, channel count/layout, bits_per_sample=0 and bits_per_raw_sample=N/A match in both containers; 95/95 audio packets.
+- ZIP integrity and archive contents checked.
+
+Limitations:
+- This environment does not contain MKVToolNix; a real mkvmerge v104.0 / mkvextract end-to-end test has NOT been run here.
+- The user's original Shameless S01E01 files are not present in this build environment; final Mac validation remains required.

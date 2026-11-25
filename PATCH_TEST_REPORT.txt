@@ -1,0 +1,11 @@
+FRAME Cinema MKV Batch v2.1.1-beta - Patch Regression Checks
+============================================================
+
+PASS: Python syntax compilation (py_compile).
+PASS: Source omits LanguageIETF, remux output gains derived "en" while legacy language remains "eng" -> accepted.
+PASS: Explicit IETF tag case / underscore spelling normalization -> accepted.
+PASS: Explicit IETF tag changes to another language -> rejected.
+PASS: Explicit IETF tag disappears -> rejected.
+PASS: Track name changes -> still rejected.
+
+Scope: helper-level regression tests only. This environment does not contain the user's original MKV or their macOS MKVToolNix run, so the exact source/output tag pair and full end-to-end remux must still be confirmed with the next run.

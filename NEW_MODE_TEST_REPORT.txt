@@ -1,0 +1,15 @@
+FRAME Cinema MKV Batch v2.1.2-beta - New Mode 1B Test Report
+===========================================================
+
+PASS: Python py_compile.
+PASS: Mocked mux command receives external English and Chinese subtitle sources in deterministic order.
+PASS: English track metadata requested as eng / English / Default Yes / Forced No.
+PASS: Chinese track metadata requested as BCP-47 zh / Chinese / Default No / Forced No.
+PASS: Output validation is configured to expect exactly English + Chinese, not the old bilingual subtitle track.
+PASS: Embedded-subtitle source is rejected before mkvmerge runs; original PGS/SRT/etc. cannot be silently stripped by this workflow.
+PASS: Subtitle filename matching extracts the same SxxExx key from English and Chinese subtitle filenames.
+PASS: Existing dual-language mode still calls the generic muxer with Chinese + English / und.
+
+NOT TESTED: Real mkvmerge/mkvextract binary and a real source MKV on macOS. The build container has FFmpeg but no MKVToolNix.
+PASS: Full main-menu smoke test selects work mode 1 -> option 2, matches one video + one English subtitle + one Chinese subtitle by SxxExx, previews paths, invokes the new mux path and completes the success/sidecar reporting branch.
+PASS: Mocked post-validation export confirms the English sidecar is extracted from the output MKV and named <video-basename>.en.srt.

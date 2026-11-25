@@ -1,0 +1,34 @@
+FRAME Cinema MKV Batch v2.4.3-beta - Single Video Forced Flag Fix
+================================================================
+
+Observed user log
+-----------------
+All 12 Shameless US S01 episodes were correctly paired with one RARBG ordinary English subtitle and one external Chinese ASS subtitle. Each source MP4 had one video track, one English audio track and zero embedded subtitle tracks. mkvmerge exited with code 0 (no warnings). Final validation failed only because source video `forced_track=None` while the MKV output explicitly reported `forced_track=False`.
+
+Cause
+-----
+The MP4 source did not expose an explicit Matroska Forced flag for its sole video track. During MKV remux, MKVToolNix wrote the equivalent default state explicitly as Forced No. v2.4.2 normalized the analogous single-video Default None -> True case, but did not normalize Forced None -> False.
+
+Fix
+---
+- Accept only the narrow metadata case: exactly one source video track and exactly one output video track, source forced_track is None, and output forced_track is False.
+- Log the normalization as an implicit non-Forced video track.
+- Continue rejecting output Forced=True, explicit False->True changes, and all Forced changes on audio/subtitle tracks or multi-video sources.
+- Does not relax Default checks, language checks, codec checks, subtitle requirements or complete A/V decoding.
+
+Tests
+-----
+- Single video None -> False: accepted.
+- Single video None -> True: rejected.
+- Single video explicit False -> True: rejected.
+- Multiple videos None -> False: rejected.
+- Audio None -> False: rejected.
+- Subtitle None -> False: rejected.
+- Existing video Default normalization: still accepted only within prior constraints.
+- Full unit suite: 57/57 PASS.
+- Python py_compile: PASS.
+- ZIP integrity check: PASS.
+
+Limitations
+-----------
+The build environment does not contain MKVToolNix. This is a narrow fix for the exact metadata mismatch in the user's log, but the same original MP4 should be rerun on the user's Mac to confirm all later validation stages, sidecar extraction and playback. Failed/ files from the previous run should be kept for diagnostics until the new output passes; they are not verified final files.

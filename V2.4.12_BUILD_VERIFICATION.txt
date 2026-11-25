@@ -1,0 +1,17 @@
+FRAME Cinema MKV Batch v2.4.12-beta - Build verification
+=========================================================
+
+Fix: FFprobe packet-summary stream index missing from requested fields.
+- ffprobe_packet_summary now requests stream=index,codec_type,codec_name,nb_read_packets.
+- Retained source audio streams are filtered by actual global FFprobe index, not None.
+- Formal remux and subtitle-append validation both inherit the corrected summary.
+- Strict audio track count, codec and packet-count comparisons remain enabled.
+
+Build verification:
+- Python syntax compilation: PASS.
+- Full unittest suite: 114/114 PASS.
+- New regression tests: 3/3 PASS.
+- ZIP integrity: PASS.
+- Extracted archive test rerun: PASS.
+- Real MKVToolNix v104.0 integration: NOT RUN; MKVToolNix is unavailable in this build environment.
+- User Shameless S01E01 full macOS end-to-end validation: PENDING.

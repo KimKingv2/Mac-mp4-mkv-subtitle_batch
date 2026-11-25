@@ -1,0 +1,25 @@
+FRAME Cinema MKV Batch v2.4.13-beta
+===================================
+FFmpeg 文字字幕解析驗證輸出管線修正
+
+使用者在 macOS + FFmpeg 9.0.2 的真實日誌中發現，兩條字幕驗證均輸出：
+  File '/dev/null' already exists. Exiting.
+  Error opening output file /dev/null.
+
+根因：validate_subtitle_stream_track() 將 ASS muxer 輸出目的地設為 /dev/null。該路徑在 macOS 上已存在。FFmpeg 9.0.2 在此情況下會輸出上述錯誤，但仍可能回傳退出碼 0。舊程式只看 returncode，因此會錯誤地把字幕解析標示為成功。
+
+修正：
+- 將 ASS muxer 目的地由 /dev/null 改為 pipe:1。
+- 父程序將 stdout 送至 subprocess.DEVNULL，因此不會在磁碟建立臨時字幕檔，也不會覆蓋任何既有檔案。
+- 對明確致命的 FFmpeg stderr 訊息增加第二層檢查；即使某些 FFmpeg 版本回傳 0，仍拒絕已知的輸出開啟／解碼錯誤。
+- 保留非致命診斷訊息紀錄；只有 FFmpeg 返回成功且沒有已知致命診斷時才將文字字幕判為解析通過。
+- bitmap 字幕的 FFprobe 封包檢查、影音完整解碼、封包數比對、字幕抽取及原子發布邏輯均未放寬。
+
+回歸測試：
+- 確認 FFmpeg 命令使用 -f ass pipe:1，且不再引用 /dev/null 作為 muxer 輸出。
+- 非零退出碼拒絕。
+- 模擬退出碼 0 但 stderr 含 Error opening output，仍拒絕。
+- 使用本環境 FFmpeg 實際執行 SubRip -> ASS pipe smoke test。
+- 使用本環境 FFmpeg 實際執行 ASS -> ASS pipe smoke test。
+
+重要限制：以上是本建置環境的 FFmpeg 9.0.2 實際字幕解析測試，不等於使用者整部影片在 macOS 的端到端播放／字幕顯示測試。MKVToolNix 端到端仍以使用者 Mac 實測為準。

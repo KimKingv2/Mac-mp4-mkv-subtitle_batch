@@ -1,0 +1,38 @@
+FRAME Cinema MKV Batch v2.4.6-beta - DefaultDuration normalization
+==================================================================
+
+Issue from the user's Shameless US S01 run
+------------------------------------------
+- mkvmerge completed with exit code 0 and no warnings.
+- Validation then stopped with source video `default_duration=None`, output `default_duration=41708333`.
+- 41708333 ns corresponds to the nominal frame period for 24000/1001 fps.
+- This may be Matroska metadata materialized during remux, but the field must not be ignored without checking actual packet timing.
+
+Narrow correction
+-----------------
+- Trigger only for exactly one source and one output video track, with source DefaultDuration absent and output DefaultDuration a positive integer.
+- Read source and output FFprobe video packet timing independently.
+- Require all four frame-rate values (source avg/r and output avg/r) to be equal, positive, and CFR (avg == r).
+- Require output DefaultDuration to equal the frame-rate-derived nanosecond duration within 1 ns.
+- Require identical packet counts and readable PTS/duration for every packet.
+- Compare per-packet duration and relative PTS within one coarser time-base tick, capped at 1 ms; reject coarser clocks.
+- VFR/ambiguous rates, non-uniform source durations, missing packet timing, frame packet count differences, timing changes and wrong DefaultDuration remain failures.
+- Other Matroska metadata fields and the existing FFprobe codec/aspect/color, packet-count and full A/V decode checks remain active.
+
+Regression coverage
+-------------------
+- CFR 24000/1001 MP4 -> MKV quantization (source 1/24000; output 1/1000): PASS.
+- Wrong DefaultDuration, VFR/ambiguous rates, nonuniform source durations, output duration change, packet count change, PTS shift and missing PTS/duration: rejected.
+- No proof supplied to MKV metadata comparator: strict failure remains.
+- Full test suite: 81/81 PASS.
+
+Integration smoke test
+----------------------
+- Generated a synthetic 3-second 24000/1001 CFR MP4 using FFmpeg; 72 video packets.
+- Remuxed it to MKV with FFmpeg stream copy (not MKVToolNix).
+- Real FFprobe packet timing comparison passed with a 1 ms maximum timestamp quantization allowance.
+
+Limitations
+-----------
+- The build container does not have mkvmerge/mkvextract. The synthetic test validates the FFprobe timing algorithm, not actual MKVToolNix metadata behavior.
+- User must rerun Shameless S01E01 on macOS, then inspect final playback, subtitle tracks and extracted `.en` sidecar before continuing the season.

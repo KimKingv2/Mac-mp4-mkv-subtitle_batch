@@ -1,0 +1,27 @@
+FRAME Cinema MKV Batch v2.2.0-beta — P0 Test Report
+====================================================
+
+Automated checks executed in the build environment:
+- Python syntax compilation: PASS
+- Unit tests: 10/10 PASS
+- LanguageIETF backfill behavior (source missing -> generated): PASS
+- Explicit LanguageIETF changes rejected: PASS
+- Audio track property drift (channels) rejected: PASS
+- Subtitle Default flag can be excluded only for modes that intentionally adjust it: PASS
+- FFprobe channel-layout drift rejected: PASS
+- FFprobe audio packet-count drift rejected: PASS
+- Chapter tree and attachment metadata drift rejected: PASS
+- Atomic publish creates the final file only from a verified staging file: PASS
+- Atomic publish refuses an existing final path without replacing it: PASS
+- Failed validation output is isolated under Failed/ and does not occupy the final filename: PASS
+- ZIP archive integrity: checked after packaging
+
+Scope and limitations:
+- This environment did not have MKVToolNix installed; no real mkvmerge/mkvextract integration test was possible.
+- No user-provided MKV was available for an end-to-end macOS test.
+- For MKV sources with attachments, the implementation extracts source and output attachments and compares SHA-256.
+- For MP4/M4V sources, mkvextract cannot directly inspect the original container; attachment count/name/MIME/description/size are compared, with the limitation written to the log.
+- Abrupt power loss, OS crash or force-kill may leave a hidden `.frame-v2-staging-*` folder. This release does not auto-scan or resume those leftovers; that is a P1 recovery enhancement. Ctrl+C is handled by moving any completed unverified candidate into Failed when possible.
+- The first real-world run should use one representative MKV containing multiple audio tracks, subtitles, chapters and attachments, then inspect the log and play the final file before batch use.
+
+The nine unit tests are in tests/test_p0_safety.py.

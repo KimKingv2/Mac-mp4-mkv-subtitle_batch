@@ -1,0 +1,36 @@
+FRAME Cinema MKV Batch v2.4.5-beta - Display dimensions normalization
+======================================================================
+
+Issue from user's Shameless US S01 log
+--------------------------------------
+- mkvmerge completed with exit code 0 and no warnings.
+- Validation then stopped with: source video `display_dimensions=None`, output `display_dimensions='1920x1080'`.
+- The source is MP4 and the target is MKV. This is consistent with MKVToolNix materializing the Matroska default display size, but the source coded dimensions still must be unchanged before treating it as metadata normalization.
+
+Narrow correction
+-----------------
+- Accept only one source and one output video track.
+- Source display_dimensions must be absent.
+- Source and output pixel_dimensions must both exist and match exactly.
+- Output display_dimensions must exactly equal output pixel_dimensions.
+- In that same case only, source display_unit=None -> output display_unit=0 (Matroska's pixel unit) is accepted.
+- Explicit display-size changes, non-default display dimensions, differing coded dimensions, other display units and multi-video cases remain strict failures.
+- FFprobe comparison now additionally checks sample_aspect_ratio and display_aspect_ratio.
+
+Regression coverage
+-------------------
+- Missing source display_dimensions -> output display size equal to unchanged coded pixels: PASS.
+- Missing source display_dimensions -> anamorphic/non-default display size: rejected.
+- Coded pixel dimension change: rejected.
+- Explicit source display_dimensions change: rejected.
+- Multiple video tracks: exception not applied.
+- Missing source DisplayUnit -> explicit pixel unit 0 under the accepted default-display case: PASS.
+- Missing source DisplayUnit -> non-pixel unit: rejected.
+- FFprobe sample_aspect_ratio and display_aspect_ratio changes: rejected.
+
+Build verification
+------------------
+- Python syntax compilation: PASS.
+- Unit tests: see final test report.
+- ZIP integrity: see final build verification.
+- Real MKVToolNix end-to-end testing is not available in this build environment; the user must re-run a single Shameless episode on macOS to verify real-world metadata and playback.

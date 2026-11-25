@@ -1,0 +1,249 @@
+FRAME Cinema MKV Batch - CHANGELOG
+==================================
+v2.4.14-beta
+-------------
+- 新增全模式中文字幕／中英雙語字幕旁掛匯出：每個最終 MKV 完整驗證並正式發布後，除原有主要 English／Japanese／Korean `.en`／`.ja`／`.ko` 外，另嘗試輸出同名 `.zh`（例如 `.zh.srt`／`.zh.ass`）。
+- 中文候選依 `zh`／`zho`／`chi` 等語言標籤識別，也辨識明確包含 Chinese／中文／中英的字幕軌名稱；涵蓋 `Chinese + English` 且 Language=und 的雙語軌。
+- 唯一候選直接選取；多條中文候選僅在其中存在唯一 Default 時選取。沒有中文軌、候選不唯一、Language／LanguageIETF 矛盾或字幕格式不支援時，記錄未匯出原因，不猜測。
+- `.zh` 旁掛匯出沿用既有 mkvextract 提取、非空檔檢查、FFprobe 字幕事件驗證、原子式不覆蓋建立與副檔名對應；既有 `.zh` 側檔會在批次預檢階段阻止該集，以免覆蓋。
+- 所有正式封裝模式均嘗試匯出 `.zh`，包含雙字幕、RARBG 英文＋SDH／中文、追加字幕及重新編碼封裝；原有 `.en`／`.ja`／`.ko` 與 SDH 匯出行為不變。
+- 不改動 MKV 內字幕軌、音訊白名單、軌道 Default／Forced、封裝參數、影片／音訊資料或完整驗證條件。
+- 新增 13 項測試，涵蓋中文語言標籤、Chinese + English 雙語名稱、唯一 Default 選取、歧義／語言衝突拒絕、SRT／ASS `.zh` 匯出與既有檔案保護。
+- Python 語法檢查通過；完整單元測試 132/132 通過。建置環境未安裝 MKVToolNix，真實 MKVToolNix macOS 端到端測試仍需在使用者環境執行。
+
+v2.4.13-beta
+-------------
+- 修正文字字幕完整解析驗證使用 `/dev/null` 造成的 FFmpeg 9.0.2 假成功：macOS 的 `/dev/null` 已存在，FFmpeg 可能輸出「File already exists / Error opening output file」但仍回傳退出碼 0，舊程式會誤判字幕通過。
+- ASS muxer 改輸出至 `pipe:1`，由父程序丟棄 stdout；不建立臨時字幕檔、不寫入磁碟，也不觸碰 `/dev/null`。
+- 對已知致命 FFmpeg stderr 訊息增加保護，即使退出碼為 0 仍拒絕；SubRip 與 ASS 均加入真實 FFmpeg pipe smoke test。
+- 不放寬字幕軌數、字幕事件抽取、音訊／字幕封包數、完整影音解碼或原子發布條件。
+
+v2.4.12-beta
+-----------
+- 修正 FFprobe 封包摘要未要求輸出 stream `index` 欄位，卻在音訊語言篩選後依該 index 篩選來源音訊軌，導致來源音訊摘要被錯誤篩成 0 軌、輸出仍有 1 軌的驗證缺陷。
+- `ffprobe_packet_summary()` 現在明確要求 `stream=index,codec_type,codec_name,nb_read_packets`，保留 FFprobe 的全域 stream index；來源保留音訊軌篩選因此能正確對應 MP4 原始串流。
+- 修正同時適用正式封裝驗證與追加字幕後的原音訊封包驗證；不改變音訊軌選擇規則。
+- 音訊封包軌數、codec 及封包數比較仍嚴格執行；未放寬任何封包數差異。新增 3 項回歸測試，涵蓋 index 查詢、單音訊軌 index=1，以及多音訊來源篩選後保留 index 對應。
+- Python 語法檢查通過；完整單元測試 114/114 通過。真實 MKVToolNix v104.0 與使用者 Shameless S01E01 完整端到端測試仍需在使用者 Mac 上完成。
+
+
+v2.4.11-beta
+-----------
+- 修正單一 AAC 音訊軌 MP4 -> MKV 封裝時，來源 MP4 的 QuickTime sample-size 欄位回報 `audio_bits_per_sample=16`，但輸出 Matroska 未提供可選 `BitDepth`（None）所造成的跨容器誤判。
+- Matroska RFC 9559 將 Audio BitDepth 定義為每樣本位元數，並註明主要用於 PCM；對 AAC 這種壓縮格式，該欄位可不出現。
+- 僅接受來源／輸出各恰好一條音訊軌、來源值恰為 16、輸出值缺失、來源 CodecID 缺失、輸出 CodecID 恰為 `A_AAC`，且來源／輸出 codec 描述相同並明確為 AAC 的情況。
+- 其他位深值、明確來源 CodecID、多音訊軌、非 AAC、輸出明確提供不同 BitDepth 等情況仍嚴格拒絕。
+- FFprobe 的 codec_name、Profile、sample_rate、channels、channel_layout、bits_per_sample、bits_per_raw_sample 仍嚴格比對；音訊封包數及完整影音解碼不放寬。
+- 新增 AAC Matroska BitDepth 正規化回歸測試；真實 MKVToolNix v104.0 端到端測試仍需在使用者 Mac 完成。
+
+
+v2.4.10-beta
+-----------
+- 修正 MP4 單一 AAC 音訊軌的跨容器 CodecID 誤判：來源 `mkvmerge -J` 未提供 Matroska `codec_id`（None），輸出 MKVToolNix 指派 `A_AAC`。
+- 僅接受來源／輸出各恰好一條音訊軌、來源 CodecID 缺失、輸出恰為 `A_AAC`，且來源／輸出 codec 描述完全相同並明確包含 AAC。
+- 非 AAC CodecID、描述不符、來源原本有明確 CodecID、多音訊軌等情況仍嚴格拒絕。
+- FFprobe `codec_name`、Profile、取樣率、聲道數／配置、位深、音訊封包數及完整影音解碼驗證均不放寬。
+- 新增 AAC CodecID 正規化回歸測試；真實 MKVToolNix v104.0 端到端測試仍待使用者 Mac 驗證。
+
+
+v2.4.9-beta
+-----------
+- 修正單一音訊軌 MP4 -> MKV 封裝時，來源 `mkvmerge -J` 未提供 Matroska `forced_track`（None），但輸出 MKV 明確回報預設 Forced No（False）所造成的誤判。
+- 僅接受來源與輸出各恰好一條音訊軌、來源 Forced 缺失、輸出 Forced=False 的狹義正規化。
+- 輸出 Forced=True、來源明確旗標變更、多音訊軌及所有字幕 Forced 旗標仍嚴格拒絕。
+- 音訊語言、LanguageIETF、軌道名稱、Default、Enabled、CodecID、codec 描述、聲道、取樣率、位深、FFprobe 串流屬性、封包數及完整影音解碼驗證均不放寬。
+- 新增單音訊軌 Forced 旗標回歸測試；真實 MKVToolNix v104.0 端到端測試仍待使用者 Mac 驗證。
+
+
+v2.4.8-beta
+-----------
+- 修正 v2.4.7 在實際 Shameless S01E01 測試中，因直接比較來源／輸出完整 framemd5 數量而錯誤拒絕前導封包差異的問題。來源 FFmpeg 解碼清單可能包含與首個 keyframe 前導封包相對應的額外輸出記錄；MKVToolNix 輸出已省略該封包前綴，因此兩邊完整解碼記錄數量不會相同。
+- 現在先獨立確認封包差額剛好等於來源第一個 H.264／HEVC keyframe 前的完整前綴，且輸出第一個封包為 keyframe；不符合候選條件便不執行例外。
+- 對確認的前綴差額，來源 framemd5 比較僅略過相同數量的最前端解碼記錄；來源剩餘影格數必須與輸出完全相等，並逐幀比較 MD5、順序、相對 PTS 與 duration。剩餘影格任何差異仍會拒絕。
+- CFR、DefaultDuration、首個 keyframe 位置、逐封包 duration／相對 PTS、音訊封包數及既有完整驗證仍保持嚴格；沒有放寬非前導影片封包或音訊差異。
+- 新增 4 項前導影格 suffix 比對及前綴候選回歸測試；完整單元測試 94/94 PASS，Python 語法檢查 PASS。
+- 真實 MKVToolNix v103.0 整合仍需在使用者 Mac 上確認；本建置環境沒有 mkvmerge／mkvextract。
+
+v2.4.7-beta
+-----------
+- 修正 v2.4.6 在 Shameless US S01 測試中遇到的影片封包數差異：來源 MP4 比輸出 MKV 多 65／52 個影片封包；不能把封包差額直接忽略。
+- 納入 MKVToolNix H.264／HEVC 解析器的已知行為：丟棄第一個 keyframe 之前的前導封包。例外僅在來源／輸出使用相同 H.264 或 HEVC codec、封包差額剛好等於來源第一個 keyframe 前的完整前綴、且輸出第一個封包就是該 keyframe 時啟用。
+- 對上述候選情況額外使用 FFmpeg `framemd5` 完整解碼來源與輸出影片，要求可解碼影格數、逐幀 MD5、相對 PTS 與 duration 全部一致；若 framemd5 使用同一精確 CFR 時基，時間戳要求精確一致；只有雙方時基不同且均可提供不粗於 1 ms 的量化精度時，才容許最多 1 ms 誤差。
+- 通過前導非關鍵封包例外後，只將影片封包數相等檢查改由更嚴格的逐幀解碼 MD5／時序驗證取代；音訊仍維持逐軌封包數嚴格比對，其他非前綴影片封包差異、像素差異、影格數差異、時間戳變更及 VFR 仍拒絕。
+- 新增 9 項 DefaultDuration／framemd5 回歸案例；完整測試套件 90/90 PASS，Python 語法檢查 PASS。
+- 合成 24000/1001 HEVC MP4 → MKV（FFmpeg stream-copy）實際解碼比對 72 幀，framemd5 逐幀一致、相對 PTS／duration 一致；來源／輸出 FFprobe 封包均為 72。
+- 建置環境未安裝 MKVToolNix；實際 v103.0 對使用者 Shameless 原檔的前導封包行為仍需在 Mac 驗證。若封包差額不是第一個 keyframe 前的完整前綴，或解碼影格不完全一致，程式仍會安全停止。
+
+v2.4.6-beta
+-----------
+- 修正 MP4 等非 Matroska 來源未提供 `default_duration`（None），而 MKVToolNix 輸出補入 Matroska DefaultDuration（例如 41708333 ns）時的逐欄位誤判。
+- 不直接忽略 DefaultDuration：僅限來源／輸出各只有一條影片軌、來源欄位缺失、輸出為正整數時才啟動影格時序核驗。
+- 以 FFprobe 重新讀取來源與輸出的所有影片封包；要求來源／輸出 avg_frame_rate 與 r_frame_rate 四者相同且形成明確 CFR，DefaultDuration 必須符合該影格率換算值（最多 1 ns 整數四捨五入差異）。
+- 逐封包比較封包數、duration 與相對首幀 PTS；最多容許較粗時間基底的一個 tick，且時間戳精度不得粗於 1 ms。缺少 PTS／duration、非 CFR、時長／PTS 改變或無法讀取時仍拒絕。
+- FFprobe video stream metadata comparison adds no unconditional frame-rate relaxation; the special duration check is invoked only for the precise missing-source／present-output DefaultDuration case.
+- 新增 10 項 DefaultDuration 正規化回歸測試；完整測試套件 81/81 PASS，Python syntax PASS。
+- 合成 24000/1001 CFR MP4 → MKV（FFmpeg stream-copy）FFprobe timing smoke test: 72 packets, PASS。建置環境未安裝 MKVToolNix，真實 mkvmerge／mkvextract macOS 端到端仍待使用者測試。
+
+v2.4.5-beta
+-----------
+- 修正 MP4 來源未提供 `display_dimensions`（None），而 MKVToolNix 在輸出 MKV 中補入 `1920x1080` 等預設顯示尺寸時的跨容器 metadata 誤判。
+- 僅在來源／輸出各只有一條影片軌、來源缺少 `display_dimensions`、兩邊 `pixel_dimensions` 完全相同，且輸出 `display_dimensions` 與 `pixel_dimensions` 完全相同時接受；非預設顯示比例、像素尺寸改變、來源明確顯示尺寸變更及多影片軌仍拒絕。
+- 若上述預設顯示尺寸成立，僅允許來源 `display_unit=None` 到輸出 Matroska 預設 `display_unit=0`（pixels）；其他值仍嚴格比較。
+- FFprobe 影片串流新增 `sample_aspect_ratio`、`display_aspect_ratio` 嚴格比對，保護畫面比例資訊。
+- 新增 9 項回歸測試，覆蓋預設顯示尺寸、非預設顯示尺寸拒絕、像素尺寸變更、多影片軌拒絕、DisplayUnit 正規化，以及 SAR／DAR 變更拒絕。
+- 真實 MKVToolNix 未安裝於建置環境；仍需使用者在 Mac 以原始 MP4 完成端到端驗證。
+
+v2.4.4-beta
+-----------
+- 修正非 Matroska 來源（例如 MP4）未提供 Matroska `codec_id`，而重新封裝後 MKVToolNix 為影片軌指定 `V_MPEGH/ISO/HEVC` 等 CodecID 時的跨容器誤判。
+- 僅在來源 CodecID 缺失、輸出 CodecID 存在、來源／輸出 mkvmerge codec 描述完全相同，且輸出 CodecID 與已知影片 codec 描述相符時接受；支援 HEVC、AVC、AV1、VP9、MPEG-2、Theora。
+- 來源有明確 CodecID 時仍嚴格比較；未知或不匹配的 CodecID、音訊／字幕 CodecID 差異不放寬。
+- FFprobe 仍獨立嚴格比較實際 codec_name、Profile、解析度、像素格式、色彩資訊等；封包數比較及完整 FFmpeg A/V 解碼驗證不變。
+- 新增 5 項 CodecID 正規化回歸測試。
+
+
+v2.4.3-beta
+-----------
+- 修正 MP4 來源只有一條影片軌時，來源 MKVToolNix metadata 未提供 forced_track（None），而重新封裝輸出明確寫入 forced_track=False 時的誤判。
+- 僅限來源與輸出各恰好一條影片軌、來源值為 None、輸出值為 False 時，視為「來源未設定」與「明確非 Forced」的等效表示；單一影片軌若輸出 Forced=True 仍拒絕。
+- 多影片軌、明確來源 Forced 值變化、音訊 Forced 旗標、字幕 Forced 旗標仍嚴格比對，不放寬其他軌道。
+- 新增 7 項回歸測試，覆蓋單影片軌 None→False、None→True 拒絕、明確 False→True 拒絕、多影片軌拒絕，以及音訊／字幕 Forced 旗標仍嚴格檢查。
+- 完整測試套件 57 項全部通過；Python 語法檢查通過。建置環境未安裝 MKVToolNix，仍需在使用者 Mac 以原始 MP4 完成真實端到端封裝驗證。
+
+v2.4.2-beta
+-----------
+- 修正 MP4 來源只有一條影片軌時，來源 mkvmerge -J 回報 default_track=None、輸出 MKVToolNix 回報 default_track=True 的誤判。唯一影片軌在來源未明確標記 Default 時，輸出明確標記 Default Yes 視為等效表示。
+- 僅限來源與輸出各恰好一條影片軌、來源值為 None、輸出值為 True；多影片軌、明確 False、輸出 False、音訊與字幕 Default 旗標仍嚴格比較。
+- FFprobe disposition 的 video.default 差異只在 MKVToolNix metadata 確認上述情況時才允許；不放寬 audio／subtitle disposition。
+- 新增 7 項回歸測試，總計 50 項單元測試通過；Python 語法檢查通過。
+- 建置環境未安裝真實 MKVToolNix，需在使用者 Mac 以原本失敗的 MP4 來源完成端到端確認。
+
+v2.4.1-beta
+-----------
+- 重新撰寫工作模式 1 的字幕組合 1／2 選單文字，明確說明需要提供外掛字幕資料夾，以及來源影片內嵌字幕是否會保留。
+- 組合 1 明確定義為：影片 + 外掛主要語言字幕 + 外掛中英雙語字幕；來源 MKV 內嵌字幕會被排除，不是保留既有內嵌中文／雙語字幕後只新增英文。
+- 組合 2 明確定義為：無內嵌字幕影片 + 外掛主要語言字幕 + 外掛純中文字幕。
+- 在選單增加提示：若中文／雙語字幕已內嵌在原始 MKV，勿選組合 1／2；應使用工作模式 2／3／4 的追加字幕流程，以保留原字幕。
+- 本次只澄清 UI 與 README，不改變既有封裝命令及字幕選取行為。
+
+v2.4.0-beta
+-----------
+- 新增批次主要字幕語言設定檔：English／Japanese／Korean。該設定控制雙字幕模式的主要字幕語言、模式 2／3 的唯一預設字幕選擇，以及驗證成功後旁掛字幕副檔名（.en／.ja／.ko）。
+- 所有正式封裝模式統一套用音訊白名單，只保留可可靠識別的 English／Japanese／Korean 音訊軌，其他明確識別語言（例如 Russian）不加入最終 MKV；保留音訊一律 Copy，不重新編碼。
+- 保留音訊的原 Default 旗標。若所有原 Default 音軌均被排除，優先將本批次主要語言音軌設為 Default；沒有該語言時，第一條保留音軌作為備援 Default。
+- 語言標籤正規化常見 ISO 639-1／ISO 639-2 配對，避免 rus／ru-RU、zho／zh-Hans、fra／fr-FR 等相同語言被誤判衝突；對 und 標記僅在音軌名稱明確時推斷語言。
+- 新增 FFprobe 與 MKVToolNix 來源音訊語言交叉檢查；兩者對同一串流提供互相矛盾的明確語言時停止，不按錯誤順序刪除音軌。未知音軌也採 fail-closed。
+- 模式 2／3／4 的新增字幕語言預設值改為所選主要語言；模式 2／3 按 English／Japanese／Korean profile 設定及識別 Default。模式 4 仍嚴格保留原有字幕 Default 旗標。
+- RARBG 1C／1D 維持 English-only，若選 Japanese／Korean profile 會在選擇資料夾前安全停止，避免把英語字幕錯標為日語／韓語。
+- 文件及日誌更新，清楚區分主要字幕語言與音訊保留白名單；新增語言正規化、俄語排除、明確名稱推斷、FFprobe／MKVToolNix 語言衝突及雙字幕封裝命令列參數測試。
+- 完成 Python 語法檢查及 43 項單元測試；測試環境未安裝真實 MKVToolNix，仍需在使用者 Mac 以代表性多音軌 MKV 做 1～2 集端到端驗證。
+
+v2.3.1-beta
+-----------
+- 工作模式 1 新增 1D「RARBG 普通英文＋外部中文字幕」：英文從 RARBG `Subs/每集資料夾/` 依字幕內容選取唯一普通英文；中文字幕從獨立資料夾按 SxxExx 配對。
+- 依序選擇影片根目錄、RARBG Subs 根目錄、中文字幕根目錄及輸出目錄；不需手動抽取或重新命名 RARBG 英文字幕。
+- 封裝 English（eng，Default Yes）及 Chinese（zh，Default No）；RARBG English SDH 不加入此模式，若偵測到會記錄。
+- 來源若有任何內嵌字幕軌，安全停止該集；驗證成功後從最終 MKV 提取唯一普通英文 `.en.srt`／`.en.ass`。
+- 普通英文多份、中文字幕缺失／重複、集數資料夾無法唯一匹配時停止該集並記錄原因。
+- 保留 v2.3.0 的 RARBG 普通英文＋SDH 模式（1C）及所有原有功能。
+- 執行 Python 語法及原有單元測試；新增 RARBG 普通英文選取與外部中文字幕配對回歸測試。
+
+v2.3.0-beta
+-----------
+- 工作模式 1 新增 1C「RARBG Subs 每集資料夾」：選擇影片根目錄、Subs 根目錄及輸出目錄，不需預先整理／重新命名每集字幕檔。
+- 優先依影片完整檔名與 Subs 子資料夾名稱一對一精確匹配；只有在 SxxEyy 對應資料夾唯一時才允許回退匹配；重複資料夾、重複影片集數及無對應資料夾均列為需檢查，不猜測。
+- 在每集字幕資料夾內遞迴掃描檔名含 English 的 ASS／SSA／SRT，忽略檔名明確標示 Forced 的字幕。
+- 新增內容型字幕分類：優先使用 SDH／Hearing Impaired／Closed Caption 及 `[English - us - sdh]` 明確標記，並輔以獨立聲音描述行密度；不把 `3_`、`4_` 編號當作固定語義。必須唯一識別普通英文與 SDH，否則安全停止該集。
+- RARBG 模式輸出普通 English（eng，Default Yes）及 English SDH（eng，Default No）；來源若已有任何內嵌字幕軌，停止該集以免靜默丟棄來源字幕。
+- 最終 MKV 完整驗證成功後，分別從最終檔提取普通英文 `.en.srt`／`.en.ass` 及 SDH `.en.sdh.srt`／`.en.sdh.ass`；兩類旁掛檔均採不覆蓋寫入。
+- 日誌保存每集的目錄匹配方式、普通英文／SDH 判定依據及兩類旁掛匯出結果。
+- 新增 `tests/test_rarbg_subs.py`，直接以使用者提供的 Shameless `3_English.srt` 與 `4_English.srt` 為樣本，並測試精確匹配、唯一集數回退、重複資料夾拒絕、重複普通英文拒絕、Forced 排除、SDH 匯出選軌及來源內嵌字幕保護。
+- 總計 20 項單元測試通過；已通過 Python 語法檢查。此建置環境沒有 MKVToolNix，尚未完成真實 mkvmerge／mkvextract 端到端測試。
+
+FRAME Cinema MKV Batch - CHANGELOG
+==================================
+v2.4.12-beta
+-----------
+- 修正 FFprobe 封包摘要未要求輸出 stream `index` 欄位，卻在音訊語言篩選後依該 index 篩選來源音訊軌，導致來源音訊摘要被錯誤篩成 0 軌、輸出仍有 1 軌的驗證缺陷。
+- `ffprobe_packet_summary()` 現在明確要求 `stream=index,codec_type,codec_name,nb_read_packets`，保留 FFprobe 的全域 stream index；來源保留音訊軌篩選因此能正確對應 MP4 原始串流。
+- 修正同時適用正式封裝驗證與追加字幕後的原音訊封包驗證；不改變音訊軌選擇規則。
+- 音訊封包軌數、codec 及封包數比較仍嚴格執行；未放寬任何封包數差異。新增 3 項回歸測試，涵蓋 index 查詢、單音訊軌 index=1，以及多音訊來源篩選後保留 index 對應。
+- Python 語法檢查通過；完整單元測試 114/114 通過。真實 MKVToolNix v104.0 與使用者 Shameless S01E01 完整端到端測試仍需在使用者 Mac 上完成。
+
+
+
+v2.2.0-beta
+-----------
+- P0 安全封裝：所有批次 MKV 先寫入目標磁碟同層的隱藏暫存目錄；只有 MKVToolNix／FFprobe／字幕解析／完整影音解碼全部通過後，才以不覆蓋既有檔案的原子發布方式建立正式檔名。
+- 發布採用 macOS renamex_np(RENAME_EXCL)；不支援時依序使用原子硬連結或 O_EXCL 保留路徑後原子替換，避免覆蓋既有成品。
+- 驗證失敗或使用者 Ctrl+C 時，已生成的未驗證 MKV 移到輸出旁的 Failed 資料夾，不佔用正式輸出檔名；之後可直接重新執行該集。來源檔永不修改。
+- 新增 Matroska 影片／音訊／字幕逐軌 metadata 比對：codec 描述、codec ID、語言、LanguageIETF、軌道名稱、Default／Forced／Enabled，以及音訊聲道數、取樣率、位深與影片顯示尺寸／色彩等可用欄位。
+- FFprobe 加入獨立串流格式及音訊／原字幕封包數比對：影片 codec／profile／解析度／pixel format／色彩資訊；音訊 codec／profile／取樣率／聲道／channel layout／位深。對可取得的封包數逐軌核對，完整影音解碼仍保留。
+- 追加字幕模式會比較原有字幕軌的 codec、語言、名稱、Forced／Enabled 等；Default 依各模式規則獨立驗證，允許模式 2／3 有意調整預設旗標。
+- 加強章節檢查：逐項比較 MKVToolNix 回報的章節樹、時間、UID、Edition flags、顯示文字與語言資訊，不再只看章節數量。
+- 加強附件檢查：比較附件數量、檔名、MIME 類型、描述及大小；對 MKV 來源另以 mkvextract 提取來源／輸出附件並比對 SHA-256。MP4／M4V 來源因 mkvextract 不支援直接讀取原容器，會明確記錄僅完成附件 metadata／大小比對。
+- 影片重新編碼的準備階段也套用音訊／字幕逐軌屬性、FFprobe 串流格式、章節與附件檢查，防止最終封裝前的非影片資料已經丟失。
+- 新增 tests/test_p0_safety.py，涵蓋 IETF 標籤補齊規則、音訊欄位變更偵測、字幕 Default 模式例外、FFprobe 通道布局、章節／附件變更、原子發布不覆蓋與失敗檔隔離。
+- 測試限制：目前完成 Python 單元／模擬測試；執行環境沒有 MKVToolNix，尚未以真實 MKV 檔完成 macOS 端到端測試。突然斷電／強制結束可能留下隱藏 staging 目錄，本版不自動掃描或恢復，列入 P1。第一次使用請先挑 1 集含多音軌／字幕／章節／附件的 MKV 驗證。
+
+
+v2.1.2-beta
+-----------
+- 工作模式 1 新增 1B「無內嵌字幕影片＋純英文字幕＋純中文字幕」組合；原有英文＋中英雙語流程保持不變。
+- 依 SxxExx 一對一配對影片、英文字幕及中文字幕，支援 ASS／SSA／SRT。
+- English 使用 eng／English／Default Yes；Chinese 使用 zh／Chinese／Default No，明確維持英文為唯一預設字幕。
+- 來源若已有任何內嵌字幕軌，本新增模式會停止該集，不會因使用 --no-subtitles 而靜默丟棄原字幕。
+- 新增對中文 IETF 語言標籤 zh 及其舊版 ISO 語言欄位的驗證；不假設字幕內容是繁體或簡體。
+- 最終 MKV 驗證恰好兩條字幕、英文／中文語言標記及 Default 旗標；逐條檢查字幕可讀性，並完整解碼全部影片與音訊軌。
+- 驗證成功後從最終 MKV 提取英文字幕旁掛檔，依內容格式輸出同名 .en.ass／.en.srt；不直接複製輸入英文字幕檔。
+- 新增模式以模擬 MKVToolNix／FFmpeg 整合測試涵蓋配對、封裝參數、內嵌字幕保護及輸出驗證；尚待使用者 Mac 的真實 MKVToolNix 端到端測試。
+
+v2.1.1-beta
+-----------
+- 修正 MKVToolNix 重封裝時自動補寫 LanguageIETF 語言標籤，卻被舊版嚴格欄位比較誤判為音訊設定變更的問題。
+- 只有來源原本沒有明確 LanguageIETF、而 MKVToolNix 依照保持不變的舊版 Language 自動補齊時，才允許此欄位差異。
+- 來源原本明確存在 LanguageIETF 時，標籤變更或消失仍會安全停止；音訊／字幕軌數量、編碼、舊版語言、軌道名稱、Default／Forced 旗標仍嚴格檢查。
+- 驗證錯誤訊息補上來源值與暫存值；自動補齊會寫入日誌，讓變更原因可追溯。
+
+v2.1-beta
+---------
+- 新增「單集編碼品質測試」入口，與正式批次封裝流程分離。
+- 可選取單一 MKV，預設以 HEVC Main10／x265／CRF 21／Very Slow／最高 1080p，強制編碼三段各 60 秒的影片樣片；可調整 CRF、樣片長度及片段起點。
+- 三段樣片分別用於檢查一般對話、動作變化及暗場／複雜細節；樣片只含影片，不含音訊和字幕。
+- 每段樣片都會檢查編碼、10-bit pixel format、解析度、片長並執行完整影片解碼。
+- 新增整集容量粗估：統計來源影片軌資料量，再將三段樣片平均位元率乘以全片片長，並加回原始非影片資料量。
+- 原片只讀；來源影片軌大小透過 FFmpeg stdout 管線統計，不另寫出完整影片檔。測試樣片與日誌寫入使用者選定的輸出磁碟。
+- 品質測試不套用正式批次的相同格式自動跳過規則，確保 HEVC Main10 來源也會實際試壓。
+- 新增色彩 metadata 不完整時的明確人工例外：只有保留來源標籤、不做 HDR→SDR 且維持 10-bit 輸出時，使用者明確確認後才允許重新編碼；預設仍停止。
+- 將 MKVToolNix 依賴延後至正式批次模式；單集品質測試只需要 FFmpeg／FFprobe。
+- 正式批次模式的選項說明補充：相同格式來源若要強制二次壓制，必須把自動跳過設為 N。
+- 正式批次模式新增色彩標籤不完整時的保守選項提示；不完整 metadata 預設仍停止，只有使用者明確啟用 10-bit 保留標籤例外才繼續。
+
+v2.0.1-beta
+-----------
+- 修正色彩 metadata 安全檢查順序：若來源已符合所選編碼／位深且不需縮放或色調映射，先自動跳過二次壓制並直接無損封裝。
+- 只有真正需要重新編碼、縮放或 HDR→SDR 時，才因 10-bit／廣色域缺少 transfer metadata 而安全停止。
+- HDR→SDR 遇到未知色彩類型仍會停止，不會誤把不明來源當成 SDR。
+
+v2.0-beta
+---------
+- 在 v1.4 四種字幕模式及英文字幕旁掛匯出功能之上，新增可選影片壓制流程。
+- 支援 x265 HEVC Main10、HEVC 8-bit，以及 FFmpeg 可用的 SVT-AV1／libaom AV1 10-bit。
+- 新增 x265 CRF、AV1 品質值及各編碼器分別對應的速度預設選項，並提供繁體中文解釋及推薦標記。
+- 新增最高 1080p、最高 1440p、保持原解析度選項；縮放採 Lanczos，保持比例、不升頻、不裁切。
+- 新增依原片保留 HDR／SDR，以及靜態 HDR10／HLG 轉 SDR 的色調映射選項。
+- 對 Dolby Vision、HDR10+、多影片軌、隔行、非 4:2:0、旋轉矩陣、色彩 metadata 不足等情況採安全停止。
+- 壓制階段僅重新編碼影片軌；原始音訊、字幕、章節及附件由 MKVToolNix 直接複製。
+- 新增來源軌道資訊、音訊及字幕軌保留、HDR 靜態 metadata、輸出解析度與最終完整解碼驗證。
+- 臨時影片工作檔放在所選輸出資料夾所在磁碟；新增空間檢查及 Ctrl+C 時子程序清理。
+- 改善 bitmap 字幕（如 PGS／VobSub）的驗證方式，改為 FFprobe 封包可讀性檢查，不強制轉換為 ASS。
+- 修正日誌完整保存 mkvmerge 輸出、警告原文、退出代碼和跳過原因的功能（沿用 v1.4 改進）。
+
+v1.4（沿用）
+-------------
+- 四種字幕封裝模式。
+- 成功封裝後，從最終 MKV 抽取英文字幕旁掛檔。
+- 不覆蓋原始檔或既有輸出。
+- 完整配對預覽、跳過／人工檢查明細及逐集驗證日誌。
+
+注意：v2.0-beta 尚未在使用者的實際 Mac + MKVToolNix 環境完成真實端到端壓力測試。第一次請先以少量測試集確認，再批量執行。
