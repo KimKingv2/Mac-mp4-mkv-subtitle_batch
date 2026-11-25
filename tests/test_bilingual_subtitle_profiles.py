@@ -149,5 +149,49 @@ class BilingualMuxCommandTests(unittest.TestCase):
             self.assertEqual(verify.call_args.kwargs["second_track_name"], "繁體中文 + English")
 
 
+
+class BilingualSidecarExportTests(unittest.TestCase):
+    def test_zh_tw_english_track_exports_to_descriptive_sidecar_name(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            output = root / "Episode.S01E01.mkv"
+            output.write_bytes(b"mock mkv")
+            logfile = root / "run.log"
+            ass_bytes = b"[Script Info]\\nTitle: bilingual\\n"
+            info = {"tracks": [
+                {"id": 2, "type": "subtitles", "codec": "ASS", "properties": {
+                    "track_name": "繁體中文 + English", "language": "chi",
+                    "language_ietf": "zh-TW", "codec_id": "S_TEXT/ASS",
+                    "default_track": False}},
+            ]}
+
+            def fake_run(command):
+                target = command[-1]
+                _, destination = target.split(":", 1)
+                Path(destination).write_bytes(ass_bytes)
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+            with mock.patch.object(mod, "mkvmerge_info", return_value=(info, 0, "")), \\
+                 mock.patch.object(mod, "run_text", side_effect=fake_run), \\
+                 mock.patch.object(mod, "validate_subtitle_source",
+                                   return_value=({"codec_name": "ass"}, 18, "")):
+                ok, message, status = mod.export_chinese_sidecar(
+                    "mkvextract", "mkvmerge", "ffprobe", output, logfile)
+
+            expected = root / "Episode.S01E01.zh-tw-en.ass"
+            self.assertTrue(ok, message)
+            self.assertEqual(status, "exported")
+            self.assertEqual(Path(message), expected)
+            self.assertEqual(expected.read_bytes(), ass_bytes)
+
+    def test_preflight_detects_locale_specific_bilingual_sidecar(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            output = root / "Episode.S01E01.mkv"
+            existing = root / "Episode.S01E01.zh-cn-ja.ass"
+            existing.write_text("keep", encoding="utf-8")
+            self.assertEqual(mod.existing_chinese_sidecar_paths(output), [existing])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
