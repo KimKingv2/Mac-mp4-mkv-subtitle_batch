@@ -7,7 +7,7 @@ v2.4.15-beta
 - 若來源缺少簡繁標記、同時標記簡體與繁體、或明確原語言與本批主要語言 profile 不符，該集安全停止，不推測字幕內容、不錯配集數。
 - 封裝時使用 `zh-TW`／`zh-CN` BCP 47 語言標記，軌道名稱包含中文變體及原語言；雙語 ASS／SSA／SRT 保持為單一完整字幕軌，不拆分、不重新編碼；主要 EN／JA／KO 字幕仍 Default Yes，雙語備用軌 Default No。
 - 雙語旁掛檔依簡繁及原語言命名，例如 `.zh-tw-en.ass`、`.zh-cn-ja.ass`、`.zh-tw-ko.ass`；舊有只有通用中文標記的軌道維持 `.zh`。批次預檢同步保護 locale-specific 檔名，避免覆蓋。
-- 新增雙語來源識別、語言衝突拒絕、mkvmerge 參數、旁掛匯出及既有檔案保護回歸測試。
+- 新增 14 項雙語回歸測試，涵蓋簡繁識別、EN／JA／KO 原語言配對、衝突拒絕、mkvmerge 參數、旁掛匯出及既有檔案保護；GitHub Actions Python 編譯通過，完整 unittest 146/146 通過，FFmpeg SRT／ASS pipe smoke test 通過。真實 macOS + MKVToolNix 端到端測試仍待實機執行。
 - 新增 GitHub Actions 自動執行 Python 編譯與完整 unittest 套件；真實 macOS + MKVToolNix 端到端仍以使用者裝置驗證為準。
 
 v2.4.14-beta
