@@ -1,0 +1,31 @@
+FRAME Cinema MKV Batch v2.4.15-beta - Build Verification
+========================================================
+
+Source:
+- GitHub branch: main
+- Bilingual locale/original-language implementation is committed.
+- Version: 2.4.15-beta
+
+Changes verified by regression tests:
+- zh-TW / zh-CN identification from explicit ZH-TW / ZH-CN / zh-Hant / zh-Hans path markers.
+- Original-language suffix EN / JA / KO recognition and mismatch rejection against the selected primary language profile.
+- Correct secondary track language values zh-TW / zh-CN and localized track names.
+- Primary EN / JA / KO subtitle remains Default Yes; bilingual Chinese + original-language subtitle remains Default No.
+- Bilingual subtitle remains one unchanged external subtitle track; no text splitting or subtitle re-encoding is performed by the remux command.
+- Locale-specific sidecar naming, e.g. .zh-tw-en.ass, .zh-cn-ja.ass and .zh-tw-ko.ass.
+- Legacy generic Chinese subtitle tracks retain the .zh sidecar convention.
+- Locale-specific sidecar preflight prevents overwriting an existing matching file.
+
+GitHub Actions:
+- Workflow: Python regression tests
+- Run: https://github.com/KimKingv2/Mac-mp4-mkv-subtitle_batch/actions/runs/45562330951
+- Python source compile: PASS
+- Full unittest suite: PASS (146/146)
+- Real FFmpeg SubRip-to-ASS pipe smoke test: PASS
+- Real FFmpeg ASS-to-ASS pipe smoke test: PASS
+
+Limitations:
+- The GitHub runner did not perform a real MKVToolNix remux of the user's Shameless sample.
+- A real macOS + MKVToolNix 104.0 end-to-end test is still required to verify the resulting MKV reports LanguageIETF=zh-TW, the expected legacy Language code, the bilingual track name, and Default=No.
+- The 146 automated tests include mocked mkvmerge/mkvextract command and output checks; they do not establish successful playback or translation correctness of a real subtitle file.
+
