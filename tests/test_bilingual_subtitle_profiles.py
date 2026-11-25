@@ -157,7 +157,7 @@ class BilingualSidecarExportTests(unittest.TestCase):
             output = root / "Episode.S01E01.mkv"
             output.write_bytes(b"mock mkv")
             logfile = root / "run.log"
-            ass_bytes = b"[Script Info]\\nTitle: bilingual\\n"
+            ass_bytes = b"[Script Info]\nTitle: bilingual\n"
             info = {"tracks": [
                 {"id": 2, "type": "subtitles", "codec": "ASS", "properties": {
                     "track_name": "繁體中文 + English", "language": "chi",
