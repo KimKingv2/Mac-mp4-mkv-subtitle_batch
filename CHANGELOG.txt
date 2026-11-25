@@ -1,5 +1,15 @@
 FRAME Cinema MKV Batch - CHANGELOG
 ==================================
+v2.4.15-beta
+-------------
+- 修正工作模式 1 組合 1 的雙語字幕語系定義：備用軌固定為「簡體中文／繁體中文 + 原語言（English／Japanese／Korean）」；不再把新加入的雙語軌標記為 `und`。
+- 依雙語字幕來源路徑／檔名識別簡繁：支援 `ZH-TW_EN`、`ZH-CN_JA`、`ZH-TW_KO`、`zh-Hant`、`zh-Hans`、Traditional／Simplified Chinese 等標記。
+- 若來源缺少簡繁標記、同時標記簡體與繁體、或明確原語言與本批主要語言 profile 不符，該集安全停止，不推測字幕內容、不錯配集數。
+- 封裝時使用 `zh-TW`／`zh-CN` BCP 47 語言標記，軌道名稱包含中文變體及原語言；雙語 ASS／SSA／SRT 保持為單一完整字幕軌，不拆分、不重新編碼；主要 EN／JA／KO 字幕仍 Default Yes，雙語備用軌 Default No。
+- 雙語旁掛檔依簡繁及原語言命名，例如 `.zh-tw-en.ass`、`.zh-cn-ja.ass`、`.zh-tw-ko.ass`；舊有只有通用中文標記的軌道維持 `.zh`。批次預檢同步保護 locale-specific 檔名，避免覆蓋。
+- 新增雙語來源識別、語言衝突拒絕、mkvmerge 參數、旁掛匯出及既有檔案保護回歸測試。
+- 新增 GitHub Actions 自動執行 Python 編譯與完整 unittest 套件；真實 macOS + MKVToolNix 端到端仍以使用者裝置驗證為準。
+
 v2.4.14-beta
 -------------
 - 新增全模式中文字幕／中英雙語字幕旁掛匯出：每個最終 MKV 完整驗證並正式發布後，除原有主要 English／Japanese／Korean `.en`／`.ja`／`.ko` 外，另嘗試輸出同名 `.zh`（例如 `.zh.srt`／`.zh.ass`）。
